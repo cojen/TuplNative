@@ -22,5 +22,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
 endif()
 
 aux_source_directory(tupl     PubSources)
+aux_source_directory(tupl/pvt PvtSources)
 
-add_library(tupl ${PubSources})
+add_library(tupl ${PubSources} ${PvtSources})
+
