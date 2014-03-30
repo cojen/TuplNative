@@ -1,0 +1,17 @@
+Dependencies: 
+
+Compilers:
+Should work with any C++11 compliant compiler.
+Tested with: GCC-4.7.2 and Clang-3.4
+
+Build Tools:
+CMake
+
+Libraries:
+Boost-1.53.0+
+
+Building:
+On Linux and similar systems (with make):
+mkdir build && cd build && cmake && make
+
+One can have CMake generate .ninja files, which I prefer because ninja runs faster.
