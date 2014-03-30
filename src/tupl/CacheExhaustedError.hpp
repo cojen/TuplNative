@@ -27,7 +27,7 @@ namespace tupl {
  * it. Can be caused by too many active cursors, transactions or open indexes.
  *
  * @author Brian S O'Neill
- * @authro Vishal Parakh
+ * @author Vishal Parakh
  */
 class CacheExhaustedError: public DatabaseError {
 };

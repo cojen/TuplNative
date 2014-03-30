@@ -27,7 +27,7 @@ namespace tupl {
  * implementations may specify an explicit ordering.
  *
  * @author Brian S O'Neill
- * @authro Vishal Parakh
+ * @author Vishal Parakh
  * @see Database
  */
 class View {
