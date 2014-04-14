@@ -25,7 +25,7 @@ class Node {
     Node* mNextDirty;
     Node* mPrevDirty;
     
-    friend class ::tupl::pvt::PageAllocator;    
+    friend class ::tupl::pvt::PageAllocator;
 };
 
 } }
