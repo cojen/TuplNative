@@ -18,8 +18,13 @@ project (Tupl)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
     ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU"))
-  set(CMAKE_CXX_FLAGS "-std=gnu++11 -Wextra")
+  set(CMAKE_CXX_FLAGS "-std=gnu++11 -Wextra -pedantic")
 endif()
+
+FIND_PACKAGE(Boost)
+IF (Boost_FOUND)
+    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+ENDIF()
 
 aux_source_directory(tupl     PubSources)
 aux_source_directory(tupl/pvt PvtSources)
