@@ -19,10 +19,8 @@
 
 namespace tupl {
 
-static byte NOT_LOADED_BYTE_MARKER[0];
+static byte NOT_LOADED_BYTE_MARKER[1]; // Standard prohibits 0-length arrays
 
-const Cursor::Range Cursor::NOT_LOADED =
-    std::pair<Cursor::Range::first_type,
-              Cursor::Range::second_type>(NOT_LOADED_BYTE_MARKER, 0);
+const Range Cursor::NOT_LOADED{NOT_LOADED_BYTE_MARKER, 0};
 
 }

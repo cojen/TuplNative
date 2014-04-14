@@ -19,10 +19,28 @@
 #define _TUPL_TYPES_HPP
 
 #include <cstdint>
+#include <utility>
 
 namespace tupl {
 
 typedef std::uint8_t byte;
+
+class Range {
+public:
+    Range(byte* data, std::size_t size);
+    
+    const byte* data() const;
+    byte* mutableData();
+    std::size_t size() const;
+    
+private:
+    byte* const mData;
+    const std::size_t mSize;
+};
+
+inline
+Range::Range(byte* data, const std::size_t size) : mData(data), mSize(size) {
+}
 
 }
 

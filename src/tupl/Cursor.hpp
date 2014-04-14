@@ -20,8 +20,6 @@
 
 #include "types.hpp"
 
-#include <utility>
-
 namespace tupl {
 
 /**
@@ -37,8 +35,6 @@ namespace tupl {
  */
 class Cursor {
 public:
-    typedef std::pair<const byte*, const std::size_t> Range;
-    
     /**
      * Empty marker which indicates that value exists but has not been {@link
      * #load loaded}.
