@@ -62,7 +62,9 @@ typedef OffsetPointerGeneric<EmbeddedValue, uint16_t> KeyOffsetPtr;
 class SearchVector {
 public:
     const KeyOffsetPtr* begin() const { return nullptr; }
-    const KeyOffsetPtr* end() const { return nullptr; }
+    const KeyOffsetPtr* end() const   { return nullptr; }
+private:
+    
 };
 
 class BottomInternalNode {
@@ -75,8 +77,7 @@ public:
     class State {
     public:
         State(const BottomInternalNode* n) :
-            node(n), hiPrefixSize(0), loPrefixSize(0), prefixSize(0),
-            mEqual(false) {}
+            node(n), hiPrefixSize(0), loPrefixSize(0), mEqual(false) {}
 
         bool equal() const { return mEqual; }
         
@@ -84,12 +85,12 @@ public:
         Range extractRange(const KeyOffsetPtr& offsetPtr) const {
             return offsetPtr.withBase(node).value();
         }
-        
+
+        // FIXME: Specialize Node comparator and remove from KeyComparator
         const BottomInternalNode* const node;
         
         size_t hiPrefixSize;
         size_t loPrefixSize;
-        size_t prefixSize;
         
         bool   mEqual;
         
@@ -105,27 +106,33 @@ public:
     bool operator()(const KeyOffsetPtr& lPtr, const Range& r) {
         return compareLower(mState.extractRange(lPtr), r, mState);
     }
+
+    bool operator()(const Range& l, const Range& r) {
+        State scratch(0);
+        return compareLower(l, r, scratch);
+    }
     
     static bool compareLower(const Range& l, const Range& r, State& st) {
         const byte* const lPtr = l.data();
         const byte* const rPtr = r.data();
         
         const size_t cmpSize  = std::min(l.size(), r.size());
+        const size_t prefixSize = std::min(st.loPrefixSize, st.hiPrefixSize);
+
+        assert(prefixSize < cmpSize);
         
         const auto mismatched = std::mismatch(
-            lPtr + st.prefixSize, lPtr + cmpSize, rPtr + st.prefixSize);
+            lPtr + prefixSize, lPtr + cmpSize, rPtr + prefixSize);
         
         if (mismatched.first == (lPtr + cmpSize)) {
             // No mismatch, is lower if size is lower
             if (l.size() == r.size()) { st.mEqual = true; }
             return l.size() < r.size(); // => "ab" < "abc"
-        } else if (mismatched.first < mismatched.second) {
+        } else if (*mismatched.first < *mismatched.second) {
             st.loPrefixSize = mismatched.first - lPtr;
-            st.prefixSize = std::min(st.loPrefixSize, st.prefixSize);
             return true; // => "abb" < "abc"
         } else {
             st.hiPrefixSize = mismatched.first - lPtr;
-            st.prefixSize = std::min(st.hiPrefixSize, st.prefixSize);
             return false; // => !("abc" < "abb")
         }   
     }
@@ -134,6 +141,9 @@ private:
     State& mState;
 };
 
+/**
+ * 
+ */
 pair<const KeyOffsetPtr*, bool> binarySearch(
     const BottomInternalNode* node,
     const KeyOffsetPtr* begin, const KeyOffsetPtr* end, const Range key)
@@ -152,3 +162,17 @@ pair<const KeyOffsetPtr*, bool> binarySearch(
 }
 
 } } } // namespace tupl::pvt::(anonymous)
+
+namespace tupl { namespace pvt {
+
+Node::Node():
+    mMoreUsed(nullptr),
+    mLessUsed(nullptr),
+    mNextDirty(nullptr),
+    mPrevDirty(nullptr),
+    mLastCursorFrame(nullptr),
+    mPage(nullptr)
+{
+}
+
+} } 
