@@ -32,7 +32,7 @@ namespace tupl {
  */
 class LargeKeyError: public DatabaseError {
 public:
-    LargeKeyError(const size_t length) {
+    LargeKeyError(const size_t /* length */) {
         // FIXME: bubble up
         // super("Key is too large: " + length);
     }

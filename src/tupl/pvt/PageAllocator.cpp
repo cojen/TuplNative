@@ -26,17 +26,17 @@ void PageAllocator::dirty(Node& nodeRef) {
         
     std::lock_guard<Latch> exclusiveLock(mLatch);
 
-    Node* const next = node->mNextDirty;
-    Node* const prev = node->mPrevDirty;
+    Node* const next = node->nextDirty;
+    Node* const prev = node->prevDirty;
         
     if (next != nullptr) {
-        if ((next->mPrevDirty = prev) == nullptr) {
+        if ((next->prevDirty = prev) == nullptr) {
             mFirstDirty = next;
         } else {
-            prev->mNextDirty = next;
+            prev->nextDirty = next;
         }
-        node->mNextDirty = nullptr;
-        (node->mPrevDirty = mLastDirty)->mNextDirty = node;
+        node->nextDirty = nullptr;
+        (node->prevDirty = mLastDirty)->nextDirty = node;
         
     } else if (prev == nullptr) {
         Node* last = mLastDirty;
@@ -46,8 +46,8 @@ void PageAllocator::dirty(Node& nodeRef) {
         if (last == nullptr) {
             mFirstDirty = node;
         } else {
-            node->mPrevDirty = last;
-            last->mNextDirty = node;
+            node->prevDirty = last;
+            last->nextDirty = node;
         }
     }
     

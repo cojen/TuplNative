@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2012-2014 Brian S O'Neill
- *  Copyright (C) 2014 Vishal Parakh
+ *  Copyright (C) 2014      Vishal Parakh
  * 
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,13 +17,16 @@
 #ifndef _TUPL_PVT_NODE_HPP
 #define _TUPL_PVT_NODE_HPP
 
+#include "../types.hpp"
+
+#include <stack>
 #include <vector>
 
 namespace tupl { namespace pvt {
 
 class PageAllocator;
 class Page;
-class TreeCursorFrame;
+class TreeCursorFrame {};
 
 class Node {
     class Header {};
@@ -31,34 +34,74 @@ class Node {
     class Id {};
     
 public:
-    Node();
+    /*
+      Note: Changing these values affects how the Database class handles the
+      commit flag. It only needs to flip bit 0 to switch dirty states.
+    */
+    enum class CacheStatus : byte {
+        CLEAN   =  0x00, // 0b0000
+        DIRTY_0 =  0x01, // 0b0010
+        DIRTY_1 =  0x03, // 0b0011
+    };
     
-private:
-    Header mHeader;
+    /*
+      Node type encoding strategy:
+
+      bits 7..4: major type   0010 (fragment), 0100 (undo log), 0110 (internal),
+                              0111 (bottom internal), 1000 (leaf)
+                              
+      bits 3..1: sub type for leaf: x0x (normal) for internal: x0x (6 byte
+                              child pointers), x1x (8 byte pointers) for both:
+                              bit 1 is set if low extremity, bit 3 for high
+                              extremity
+                              
+      bit  0:    endianness   0 (little), 1 (big)
+
+      TN == Tree Node
+      
+      Note that leaf type is always negative. If type encoding changes, the
+      isLeaf method might need to be updated.
+
+     */
+    enum class Type : byte {
+        NONE     = 0x00,
+        FRAGMENT = 0x20, // 0b0010_000_0
+        UNDO_LOG = 0x40, // 0b0100_000_0
+        TN_IN    = 0x64, // 0b0110_010_0
+        TN_BIN   = 0x74, // 0b0111_010_0
+        TN_LEAF  = 0x80, // 0b1000_000_0
+    };
+    
+    Header header;
     
     // FIXME: Node.java has this volatile, but that makes being typed
     //        complicated. Understand and verify usage
-    Id mId;
+    Id id;
     
     // FIX DOC: Links within usage list, guarded by Database.mUsageLatch.
-    Node* mMoreUsed; // points to more recently used node
-    Node* mLessUsed; // points to less recently used node
+    Node* moreUsed; // points to more recently used node
+    Node* lessUsed; // points to less recently used node
     
     // Links within dirty list, guarded by OrderedPageAllocator.
-    Node* mNextDirty;
-    Node* mPrevDirty;
+    Node* nextDirty;
+    Node* prevDirty;
     
-    // Linked stack of TreeCursorFrames bound to this Node.    
-    TreeCursorFrame* mLastCursorFrame;
+    // Stack of TreeCursorFrames bound to this Node.    
+    std::stack<TreeCursorFrame,
+               std::vector<TreeCursorFrame>> cursorFrames;
     
     // Raw contents of node.
-    Page* mPage;
+    Page* page;
     
     // TODO: Memory managment foo, THINK, overallocate Node??
-    std::vector<Node*> mChildNodes;
+    std::vector<Node*> childNodes;
 
     // Records a partially completed split
-    Split mSplit;
+    Split split;
+
+    // Not Copyable
+    Node(const Node& n) = delete;
+    Node& operator=(const Node& n) = delete;    
     
     friend class ::tupl::pvt::PageAllocator;
 };

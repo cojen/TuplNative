@@ -17,8 +17,6 @@
 
 #include "Node.hpp"
 
-#include "../types.hpp"
-
 #include <algorithm>
 #include <cassert>
 
@@ -116,7 +114,7 @@ public:
         const byte* const lPtr = l.data();
         const byte* const rPtr = r.data();
         
-        const size_t cmpSize  = std::min(l.size(), r.size());
+        const size_t cmpSize = std::min(l.size(), r.size());
         const size_t prefixSize = std::min(st.loPrefixSize, st.hiPrefixSize);
 
         assert(prefixSize < cmpSize);
@@ -142,9 +140,14 @@ private:
 };
 
 /**
- * 
+   Returns a pair whose:
+   
+   .first => a pointer first element in the range [begin, end) that is not less
+   than (i.e. greater or equal to) value.
+   
+   .second => true if an exact match was found
  */
-pair<const KeyOffsetPtr*, bool> binarySearch(
+pair<const KeyOffsetPtr*, bool> lowerBound(
     const BottomInternalNode* node,
     const KeyOffsetPtr* begin, const KeyOffsetPtr* end, const Range key)
 {
@@ -165,14 +168,14 @@ pair<const KeyOffsetPtr*, bool> binarySearch(
 
 namespace tupl { namespace pvt {
 
-Node::Node():
-    mMoreUsed(nullptr),
-    mLessUsed(nullptr),
-    mNextDirty(nullptr),
-    mPrevDirty(nullptr),
-    mLastCursorFrame(nullptr),
-    mPage(nullptr)
-{
-}
+// Node::Node():
+//     mMoreUsed(nullptr),
+//     mLessUsed(nullptr),
+//     mNextDirty(nullptr),
+//     mPrevDirty(nullptr),
+//     mLastCursorFrame(nullptr),
+//     mPage(nullptr)
+// {
+// }
 
 } } 
