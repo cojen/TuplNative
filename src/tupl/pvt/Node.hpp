@@ -19,14 +19,15 @@
 
 #include "../types.hpp"
 
+#include "CursorFrameStack.hpp"
+
 #include <stack>
 #include <vector>
 
 namespace tupl { namespace pvt {
 
 class PageAllocator;
-class Page;
-class TreeCursorFrame {};
+class Page {};
 
 class Node {
     class Header {};
@@ -86,12 +87,11 @@ public:
     Node* nextDirty;
     Node* prevDirty;
     
-    // Stack of TreeCursorFrames bound to this Node.    
-    std::stack<TreeCursorFrame,
-               std::vector<TreeCursorFrame>> cursorFrames;
+    // CursorFrame's bound to this Node
+    CursorFrameStack cursorFrames;
     
     // Raw contents of node.
-    Page* page;
+    Page page;
     
     // TODO: Memory managment foo, THINK, overallocate Node??
     std::vector<Node*> childNodes;
