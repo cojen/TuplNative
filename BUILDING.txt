@@ -12,6 +12,7 @@ Boost-1.53.0+
 
 Building:
 On Linux and similar systems (with make):
-mkdir build && cd build && cmake && make
+mkdir build && cd build && cmake ../src && make
 
-One can have CMake generate .ninja files, which I prefer because ninja runs faster.
+Newer versions of CMake can generate .ninja files. Ninja tends to build more
+quickly than Make
