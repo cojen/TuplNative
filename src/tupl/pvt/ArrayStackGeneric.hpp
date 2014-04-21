@@ -38,6 +38,8 @@ public:
     bool empty() const;
     
     bool full() const;
+
+    void clear();
     
     /*
       Disable copy construction

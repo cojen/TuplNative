@@ -75,10 +75,15 @@ void ArrayStackGeneric<T, N>::pop() {
 }
 
 template<typename T, std::size_t N>
-ArrayStackGeneric<T, N>::~ArrayStackGeneric() {
+void ArrayStackGeneric<T, N>::clear() {
     while (!empty()) {
         pop();
-    }
+    }    
+}
+
+template<typename T, std::size_t N>
+ArrayStackGeneric<T, N>::~ArrayStackGeneric() {
+    clear();
 }
 
 } } // namespace tupl::pvt
