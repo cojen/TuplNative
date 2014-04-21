@@ -19,12 +19,15 @@
 
 #include "../types.hpp"
 
-#include "CursorFrameStack.hpp"
+#include "ArrayStackGeneric.hpp"
 
-#include <stack>
 #include <vector>
 
 namespace tupl { namespace pvt {
+
+class CursorFrame {};
+
+typedef ArrayStackGeneric<CursorFrame, 64u> CursorFrameStack;
 
 class PageAllocator;
 class Page {};
