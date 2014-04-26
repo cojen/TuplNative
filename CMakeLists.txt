@@ -12,9 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-aux_source_directory(tupl     PubSources)
-aux_source_directory(tupl/pvt PvtSources)
+cmake_minimum_required (VERSION 2.8)
 
-add_library(Tupl ${PubSources} ${PvtSources})
+project (Tupl)
 
-target_link_libraries(Tupl ${Boost_THREAD_LIBRARY})
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
+    ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU"))
+  set(CMAKE_CXX_FLAGS "-std=gnu++11 -Wall -Wextra -pedantic")
+endif()
+
+FIND_PACKAGE(Boost COMPONENTS thread unit_test_framework REQUIRED)
+IF (Boost_FOUND)
+    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+ENDIF()
+
+add_subdirectory (src)
+
+enable_testing()
+add_subdirectory (test)
