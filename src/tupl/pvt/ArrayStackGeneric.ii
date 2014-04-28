@@ -19,6 +19,9 @@
 
 #include "ptrCast.hpp"
 
+#include "ArrayStackGeneric.hpp"
+
+#include <cassert>
 #include <memory>
 #include <utility>
 
@@ -42,25 +45,25 @@ void ArrayStackGeneric<T, N>::emplaceBack(T&& val) {
 }
 
 template<typename T, std::size_t N>
-T& ArrayStackGeneric<T, N>::back() {
+T& ArrayStackGeneric<T, N>::top() {
     assert(!empty());
     return *mTop;
 }
 
 template<typename T, std::size_t N>
-const T& ArrayStackGeneric<T, N>::back() const {
+const T& ArrayStackGeneric<T, N>::top() const {
     return const_cast<ArrayStackGeneric*>(this)->back();
 }
 
 template<typename T, std::size_t N>
 bool ArrayStackGeneric<T, N>::empty() const {
-    assert(mTop <  ptrCast<const T>(mElems) - 1);
+    assert(mTop == ptrCast<const T>(mElems) - 1);
     return mTop <= ptrCast<const T>(mElems) - 1;
 }
 
 template<typename T, std::size_t N>
 bool ArrayStackGeneric<T, N>::full() const {
-    assert(mTop >  ptrCast<const T>(mElems) + N - 1);
+    assert(mTop == ptrCast<const T>(mElems) + N - 1);
     return mTop >= ptrCast<const T>(mElems) + N - 1;
 }
 

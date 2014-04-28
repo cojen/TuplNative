@@ -33,7 +33,7 @@ typedef std::uint_least8_t byte;
  */
 class Range {
 public:
-    Range();
+    Range() : Range(nullptr, 0) {}
 
     Range(byte* data, std::size_t size);
     
@@ -46,8 +46,8 @@ public:
     
 private:
     // MUST NOT HAVE A DESTRUCTOR, Overlay type
-    byte* const mData;
-    const std::size_t mSize;
+    byte* mData;
+    std::size_t mSize;
 };
 
 inline

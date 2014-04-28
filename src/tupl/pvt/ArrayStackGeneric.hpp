@@ -31,9 +31,9 @@ public:
     
     void pop();
     
-    const T& back() const;
+    const T& top() const;
     
-    T& back();
+    T& top();
     
     bool empty() const;
     

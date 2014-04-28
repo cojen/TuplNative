@@ -18,7 +18,8 @@
 #ifndef _TUPL_PVT_CURSOR_HPP
 #define _TUPL_PVT_CURSOR_HPP
 
-#include "../types.hpp"
+#include "ArrayStackGeneric.hpp"
+#include "CursorFrame.hpp"
 
 namespace tupl {
 
@@ -28,6 +29,8 @@ class Tree;
 
 namespace tupl { namespace pvt {
 
+class ops;
+
 /**
    @author Vishal Parakh
  */
@@ -36,19 +39,19 @@ class Cursor final {
     // knowledge of the CursorFrame stack to the caller
     //
     // Consider making Cursor an inner-class of Tree
-private:
+public:    
     /**
       Creates a cursor that is not bound to any tree
      */ 
-    Cursor() = default;
+    Cursor() : Cursor(nullptr) {}
     
-    Cursor(Tree& tree);
+    Cursor(Tree& tree) : Cursor(&tree) {}
     
     /**
       Not copyable.
       
-      TODO: This may need to be revised. A situation where a second cursor at
-            the same spot in the tree might be desriable.
+      TODO: This may need to be revised. A situation where a second cursor lives
+            at the same spot in the tree might be desriable.
      */ 
     Cursor(const Cursor& c) = delete;
     
@@ -56,11 +59,25 @@ private:
       Unbinds the cursor from a Tree, if it is bound to one.
      */ 
     void reset();
-
+    
     /**
        @see reset()
      */
     ~Cursor();
+    
+    Tree* tree() { return mTree; }
+    
+private:
+    Cursor(Tree* tree) { mTree = tree; }
+    
+    // Lower case because these two are part of the interface exposed to ops;
+    Range key;
+    Range value;
+    
+    Tree* mTree;
+    ArrayStackGeneric<CursorFrame, 64> stackFrames;
+    
+    friend class ops;
 };
 
 } }

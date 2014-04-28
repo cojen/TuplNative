@@ -21,6 +21,12 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
   set(CMAKE_CXX_FLAGS "-std=gnu++11 -Wall -Wextra -pedantic")
 endif()
 
+# TODO: For compatability, we're going to have to build seperate 
+#       static and shared libs with different names (for Windows).
+#    
+#       This works for now
+set(BUILD_SHARED_LIBS true)
+
 FIND_PACKAGE(Boost COMPONENTS thread unit_test_framework REQUIRED)
 IF (Boost_FOUND)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})

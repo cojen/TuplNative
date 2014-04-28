@@ -1,43 +1,44 @@
 /*
- *  Copyright (C) 2012-2014 Brian S O'Neill
- *  Copyright (C) 2014      Vishal Parakh
- * 
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+  Copyright (C) 2012-2014 Brian S O'Neill
+  Copyright (C) 2014      Vishal Parakh
+  
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+ 
+      http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
  */
 #ifndef _TUPL_PVT_NODE_HPP
 #define _TUPL_PVT_NODE_HPP
 
 #include "../types.hpp"
+#include "types.hpp"
 
 #include "ArrayStackGeneric.hpp"
+#include "CursorFrame.hpp"
+#include "Latch.hpp"
 
 #include <vector>
 
 namespace tupl { namespace pvt {
 
-class CursorFrame {};
-
-typedef ArrayStackGeneric<CursorFrame, 64u> CursorFrameStack;
-
 class PageAllocator;
 class Page {};
 
-class Node {
+class Node: public Latch {
     class Header {};
     class Split  {};
     class Id {};
     
 public:
+    typedef NodeChildIterator ChildIterator;
+    
     /*
       Note: Changing these values affects how the Database class handles the
       commit flag. It only needs to flip bit 0 to switch dirty states.
@@ -75,6 +76,10 @@ public:
         TN_BIN   = 0x74, // 0b0111_010_0
         TN_LEAF  = 0x80, // 0b1000_000_0
     };
+
+    bool isLeaf() const { return false; }
+    
+    bool split() const { return false; }
     
     Header header;
     
@@ -91,16 +96,23 @@ public:
     Node* prevDirty;
     
     // CursorFrame's bound to this Node
-    CursorFrameStack cursorFrames;
+    boost::intrusive::list<
+        CursorFrame,
+        boost::intrusive::constant_time_size<false>,
+        boost::intrusive::member_hook<
+            CursorFrame,
+            CursorFrame::ListMemberHook,
+            &CursorFrame::_fellowTravelers>
+        > cursorFrames;
     
     // Raw contents of node.
     Page page;
     
-    // TODO: Memory managment foo, THINK, overallocate Node??
+    // TODO: Memory managment foo, THINK: overallocate Node, custom allocator??
     std::vector<Node*> childNodes;
 
     // Records a partially completed split
-    Split split;
+    Split mSplit;
 
     // Not Copyable
     Node(const Node& n) = delete;
