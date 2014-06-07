@@ -58,30 +58,38 @@ FindValueResult findValue(Tree& t, LeafNode& node, const Range& key) {
 
 Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
 {
-    Latch::scoped_exclusive_lock nodeLock; // Optimized for NVRO
-    
     auto& stackFrames = visitor.stackFrames;
     
-    Node* node = nullptr;
-
-    while (!stackFrames.empty()) {
+    const size_t numFrames = stackFrames.size();
+    
+    for (size_t i = 1; i < numFrames; ++i) {
         auto& frame = stackFrames.top();
         // FIXME: abstract this better
-        node = frame.node.load(std::memory_order_relaxed);
-        nodeLock = std::move(Latch::scoped_exclusive_lock(*node));
-        node->cursorFrames.erase(node->cursorFrames.iterator_to(frame));
+        Node* const node = frame.node.load(std::memory_order_acquire);
+        auto toEraseIt = node->cursorFrames.s_iterator_to(frame); // s => static
+        {
+            Latch::scoped_exclusive_lock nodeLock(*node);
+            node->cursorFrames.erase(toEraseIt);
+        }
         stackFrames.pop();
     }
     
-    assert(nodeLock.owns_lock());
-
-    Node* const root = tree.root.load(std::memory_order_relaxed);
+    auto& frame = stackFrames.top();
+    Node* const stackRoot = frame.node.load(std::memory_order_acquire);
+    auto toEraseIt = stackRoot->cursorFrames.s_iterator_to(frame);
     
-    if (node != root) {
-        nodeLock = std::move(Latch::scoped_exclusive_lock(*root));
+    Latch::scoped_exclusive_lock rootLock(*stackRoot);
+    stackRoot->cursorFrames.erase(toEraseIt);
+    stackFrames.pop();
+    
+    //FIXME: Deal with changing height by making this a "circular" stack
+    Node* const root = tree.root.load(std::memory_order_acquire);
+    
+    if (stackRoot != root) {
+        rootLock = std::move(Latch::scoped_exclusive_lock(*root));
     }
     
-    return nodeLock;
+    return rootLock;
 }
 
 void ops::bubbleSplitUpOneLevel(Tree& t, Node& splitNodeParent, Node& splitNode)
@@ -97,10 +105,10 @@ void ops::find(Tree& tree, Cursor& visitor, const Range& key) {
     
     // Restore the cursor to the root
     Latch::scoped_exclusive_lock parentLock;
-
+    
     if (visitor.stackFrames.empty()) {
         parentLock = std::move(Latch::scoped_exclusive_lock(
-                                   *tree.root.load(std::memory_order_relaxed)));
+                                   *tree.root.load(std::memory_order_acquire)));
     } else {
         parentLock = unwindAndLockRoot(tree, visitor);
     }        

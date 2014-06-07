@@ -38,9 +38,11 @@ public:
     bool empty() const;
     
     bool full() const;
-
-    void clear();
     
+    std::size_t size() const;
+    
+    void clear();
+
     /*
       Disable copy construction
     */
