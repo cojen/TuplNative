@@ -14,7 +14,8 @@
 
 aux_source_directory(tupl     PubSources)
 aux_source_directory(tupl/pvt PvtSources)
+aux_source_directory(tupl/pvt/slow PvtSlowSources)
 
-add_library(Tupl ${PubSources} ${PvtSources})
+add_library(Tupl ${PubSources} ${PvtSources} ${PvtSlowSources})
 
 target_link_libraries(Tupl ${Boost_THREAD_LIBRARY})
