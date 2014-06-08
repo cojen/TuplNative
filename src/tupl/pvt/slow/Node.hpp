@@ -15,6 +15,9 @@
   limitations under the License.
  */
 
+#ifndef _TUPL_PVT_SLOW_NODE_HPP
+#define _TUPL_PVT_SLOW_NODE_HPP
+
 /**
    Minimal implementation of the Node "interface" that is needed for a Tree
    to work
@@ -30,6 +33,7 @@
 #include "../../types.hpp"
 #include "../Latch.hpp"
 #include "../CursorFrame.hpp"
+#include "../Buffer.hpp"
 
 #include <boost/intrusive/list.hpp>
 #include <boost/container/flat_map.hpp>
@@ -37,7 +41,7 @@
 
 namespace tupl { namespace pvt { namespace slow {
 
-typedef Range RawBytes;
+typedef Bytes RawBytes;
 
 class Split {  
 };
@@ -50,12 +54,13 @@ enum class NodeType {
     UNDO_LOG
 };
 
-class BaseNode: public pvt::Latch {
+class Node: public pvt::Latch {
 public:    
     // void bindCursorFrame(Iterator, pvt::CursorFrame);
+    NodeType type() const { return mNodeType; }
     
 protected:
-    BaseNode() : mCapacity(4096) {}
+    Node(NodeType nodeType) : mNodeType(nodeType), mCapacity(4096) {}
     
     size_t capacity() const { return mCapacity; }
     
@@ -63,10 +68,11 @@ private:
     typedef boost::intrusive::list_member_hook<
         boost::intrusive::link_mode<
             boost::intrusive::safe_link>> ListMemberHook;
+
+    const NodeType mNodeType;
+    const std::uint_fast16_t mCapacity;
     
-    std::uint_fast16_t mCapacity;
-    
-public:    
+public:
     // CursorFrame's bound to this Node
     boost::intrusive::list<
         CursorFrame,
@@ -74,7 +80,7 @@ public:
         boost::intrusive::member_hook<
             CursorFrame,
             CursorFrame::ListMemberHook,
-            &CursorFrame::_fellowTravelers>
+            &CursorFrame::visitors_>
         > cursorFrames;
     
     // Do nothing right now with the next two hooks.
@@ -87,12 +93,6 @@ public:
     ListMemberHook mUsageListHook_; // guarded by the page allocator
 };
 
-template <NodeType nodeType>
-class Node: public BaseNode {
-public:
-    NodeType type() const { return nodeType; }
-};
-
 struct InsertResult {
     bool inserted;
 };
@@ -103,18 +103,24 @@ class RemoveResult {
 class InternalNode;
 class LeafNode;
 
-class InternalNode: public Node<NodeType::INTERNAL> {
-    typedef boost::container::basic_string<byte> Buffer;
+class InternalNode final: public Node {
+    typedef pvt::Buffer Buffer;
     typedef std::map<const Buffer, Node*> ChildMap;
     
 public:
     class Iterator {
+    public:
+        Node* node() { return mIt->second; }    
+    private:        
         Iterator(ChildMap::iterator it) : mIt(it) {}
         const ChildMap::iterator mIt;
         friend class InternalNode;  
     };
-
-    InternalNode() : mBytes(0) {}
+    
+    InternalNode(LeafNode& leafChild);
+    
+    InternalNode(InternalNode& internalChild)
+        : Node(NodeType::INTERNAL), mLastChild(&internalChild), mBytes(0) {}
     
     Iterator lowerBound(RawBytes key);
     
@@ -122,19 +128,18 @@ public:
     Iterator end()   { return mChildren.end(); }
     
     InsertResult insert(Iterator position, RawBytes key, Node& node);
-    RemoveResult remove(RawBytes& key);
+    RemoveResult remove(RawBytes key);
 
     std::size_t size() const { return mChildren.size(); }
     
 private:
-    std::uint_fast16_t mBytes;
+    Node* mLastChild;
     ChildMap mChildren;
+    std::uint_fast16_t mBytes;
 };
 
-class LeafNodeIterator;
-
-class LeafNode: public Node<NodeType::LEAF> {
-    typedef boost::container::basic_string<byte> Buffer;
+class LeafNode final: public Node {
+    typedef pvt::Buffer Buffer;
     typedef std::map<const Buffer, Buffer> ValuesMap;
     
 public:
@@ -143,8 +148,8 @@ public:
         const ValuesMap::iterator mIt;
         friend class LeafNode;  
     };
-
-    LeafNode() : mBytes(0) {}
+    
+    LeafNode() : Node(NodeType::LEAF), mBytes(0) {}
     
     Iterator find();
 
@@ -152,7 +157,7 @@ public:
     Iterator end()   { return mValues.end(); }
     
     InsertResult insert(Iterator position, RawBytes key, RawBytes value);
-    RemoveResult remove(RawBytes& key);
+    RemoveResult remove(RawBytes key);
     
     std::size_t size() const { return mValues.size(); }
     
@@ -161,4 +166,12 @@ private:
     ValuesMap mValues;
 };
 
+inline
+InternalNode::InternalNode(LeafNode& leafChild)
+    : Node(NodeType::INTERNAL), mLastChild(&leafChild), mBytes(0)
+{
+}
+
 } } } // namespace tupl::pvt::slow
+
+#endif

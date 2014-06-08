@@ -39,19 +39,19 @@ public:
      * Empty marker which indicates that value exists but has not been {@link
      * #load loaded}.
      */
-    const static Range NOT_LOADED;
+    const static Bytes NOT_LOADED;
 
     /**
      * Returns an uncopied reference to the current key, or null if Cursor is
      * unpositioned. Array contents must not be modified.
      */
-    virtual Range key() const = 0;
+    virtual Bytes key() const = 0;
     
     /**
      * Returns an uncopied reference to the current value, which might be null
      * or {@link #NOT_LOADED}. Array contents can be safely modified.
      */
-    virtual Range value() const = 0;
+    virtual Bytes value() const = 0;
     
     /**
      * Moves the Cursor to find the given key.
@@ -60,7 +60,7 @@ public:
      * not be modified after calling this method.
      * @throws NullPointerException if key is null
      */
-    virtual void find(Range key) = 0;
+    virtual void find(Bytes key) = 0;
     
     /**
      * Stores a value into the current entry, leaving the position
@@ -73,7 +73,7 @@ public:
      * @throws IllegalStateException if position is undefined at invocation time
      * @throws ViewConstraintException if value is not permitted
      */
-    virtual void store(Range value) = 0;
+    virtual void store(Bytes value) = 0;
     
     /**
      * Resets Cursor and moves it to an undefined position. The key and value references are

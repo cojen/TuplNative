@@ -24,7 +24,7 @@ using std::size_t;
 using std::pair;
 using std::make_pair;
 
-namespace tupl { namespace pvt {
+namespace tupl { namespace pvt { namespace disabled {
 
 namespace {
 
@@ -52,7 +52,7 @@ private:
 
 class EmbeddedValue {
 public:
-    const Range value() const { return Range{nullptr, 0}; }
+    const Bytes value() const { return Bytes{nullptr, 0}; }
 };
 
 typedef OffsetPointerGeneric<EmbeddedValue, uint16_t> KeyOffsetPtr;
@@ -80,7 +80,7 @@ public:
         bool equal() const { return mEqual; }
         
     private:
-        Range extractRange(const KeyOffsetPtr& offsetPtr) const {
+        Bytes extractBytes(const KeyOffsetPtr& offsetPtr) const {
             return offsetPtr.withBase(node).value();
         }
 
@@ -97,20 +97,20 @@ public:
     
     explicit KeyComparator(State& state) : mState(state) {}
    
-    bool operator()(const Range& l, const KeyOffsetPtr& rPtr) {
-        return compareLower(l, mState.extractRange(rPtr), mState);
+    bool operator()(const Bytes& l, const KeyOffsetPtr& rPtr) {
+        return compareLower(l, mState.extractBytes(rPtr), mState);
     }
     
-    bool operator()(const KeyOffsetPtr& lPtr, const Range& r) {
-        return compareLower(mState.extractRange(lPtr), r, mState);
+    bool operator()(const KeyOffsetPtr& lPtr, const Bytes& r) {
+        return compareLower(mState.extractBytes(lPtr), r, mState);
     }
 
-    bool operator()(const Range& l, const Range& r) {
+    bool operator()(const Bytes& l, const Bytes& r) {
         State scratch(0);
         return compareLower(l, r, scratch);
     }
     
-    static bool compareLower(const Range& l, const Range& r, State& st) {
+    static bool compareLower(const Bytes& l, const Bytes& r, State& st) {
         const byte* const lPtr = l.data();
         const byte* const rPtr = r.data();
         
@@ -149,7 +149,7 @@ private:
  */
 pair<const KeyOffsetPtr*, bool> lowerBound(
     const BottomInternalNode* node,
-    const KeyOffsetPtr* begin, const KeyOffsetPtr* end, const Range key)
+    const KeyOffsetPtr* begin, const KeyOffsetPtr* end, const Bytes key)
 {
     // TODO: These should be part of a standard verification utility
     assert(node && begin && end && key.data() && key.size());
@@ -178,4 +178,4 @@ namespace tupl { namespace pvt {
 // {
 // }
 
-} } 
+} } } // namespace tupl::pvt::disabled

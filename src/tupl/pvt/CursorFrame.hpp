@@ -27,18 +27,22 @@
 
 namespace tupl { namespace pvt {
 
+namespace slow { class Node; }
+
 class ops;
-class Node;
 
 /**
    @author Vishal Parakh
  */
-class CursorFrame final {    
+class CursorFrame final {
+    typedef slow::Node Node;
+    
     std::atomic<Node*>    node;
-    NodeChildIterator     pos;
     
-    Range   notFoundKey; // TODO: Who owns me??
+    // Used to keep track of which key we're visiting
+    MaxAlignT position[128 / sizeof(MaxAlignT)];
     
+    Bytes   notFoundKey; // TODO: Who owns me??
 public:
     // Used to keep track of all the Cursor's visiting a Node
     // 
@@ -52,7 +56,7 @@ public:
         boost::intrusive::link_mode<
             boost::intrusive::safe_link>> ListMemberHook;
 
-    ListMemberHook _fellowTravelers;
+    ListMemberHook visitors_;
 
     friend class ops;
 };

@@ -18,10 +18,11 @@
 #define _TUPL_PVT_OPS_HPP
 
 #include "Latch.hpp"
+#include "slow/Node.hpp"
 
 namespace tupl {
 
-class Range;
+class Bytes;
 
 }
 
@@ -29,7 +30,6 @@ namespace tupl { namespace pvt {
 
 class Cursor;
 class CursorFrame;
-class Node;
 class Tree;
 
 /**
@@ -41,11 +41,14 @@ class Tree;
  */
 class ops final {
 public:
-    void find(Tree& t, Cursor& visitor, const Range& key);
+    void find(Tree& t, Cursor& visitor, Bytes key);
     
 private:
+    typedef slow::Node Node;
+    
     Latch::scoped_exclusive_lock unwindAndLockRoot(Tree& tree, Cursor& visitor);
     void bubbleSplitUpOneLevel(Tree& t, Node& splitNodeParent, Node& splitNode);
+    void store(Tree& t, Cursor& visitor, Bytes value);
 };
 
 } }

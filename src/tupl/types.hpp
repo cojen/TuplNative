@@ -26,39 +26,42 @@ namespace tupl {
 
 typedef std::uint_least8_t byte;
 
+class MutableBytes;
+
 /**
    Represents an overlay over an unmanaged buffer
 
    @author Vishal Parakh
  */
-class Range {
+class Bytes {
 public:
-    Range() : Range(nullptr, 0) {}
-
-    Range(byte* data, std::size_t size);
+    Bytes() : Bytes(nullptr, 0) {}
+    Bytes(const void* data, std::size_t size);
     
-    byte* mutableData();
+    const byte* data() const { return mData; }
+    std::size_t size() const { return mSize; }
     
-    const byte* data() const;
-    std::size_t size() const;
-    
-    bool empty() const;
-    
+    // MUST NOT HAVE A DESTRUCTOR, Overlay type    
 private:
-    // MUST NOT HAVE A DESTRUCTOR, Overlay type
-    byte* mData;
-    std::size_t mSize;
+    const byte* mData; // NOT const to allow move/assign/swap
+    std::size_t mSize; // NOT const to allow move/assign/swap
+    
+    friend class MutableBytes;
+};
+
+class MutableBytes final: public Bytes {
+public:
+    MutableBytes() : MutableBytes(nullptr, 0) {}
+    MutableBytes(byte* data, std::size_t size) : Bytes(data, size) {}
+    byte* data() { return const_cast<byte*>(static_cast<Bytes*>(this)->mData); }
 };
 
 inline
-Range::Range(byte* data, const std::size_t size) : mData(data), mSize(size) {
+Bytes::Bytes(const void* data, const std::size_t size)
+    : mData(static_cast<const byte*>(data)), mSize(size)
+{
     assert(size > 0 ? data != nullptr : true);
     assert(data != nullptr ? size > 0 : true);
-}
-
-inline
-bool Range::empty() const {
-    return mSize == 0;
 }
 
 }

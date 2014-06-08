@@ -20,6 +20,7 @@
 
 #include "ArrayStackGeneric.hpp"
 #include "CursorFrame.hpp"
+#include "Buffer.hpp"
 
 namespace tupl {
 
@@ -41,13 +42,6 @@ class Cursor final {
     // Consider making Cursor an inner-class of Tree
 public:    
     /**
-      Creates a cursor that is not bound to any tree
-     */ 
-    Cursor() : Cursor(nullptr) {}
-    
-    Cursor(Tree& tree) : Cursor(&tree) {}
-    
-    /**
       Not copyable.
       
       TODO: This may need to be revised. A situation where a second cursor lives
@@ -56,25 +50,13 @@ public:
     Cursor(const Cursor& c) = delete;
     
     /**
-      Unbinds the cursor from a Tree, if it is bound to one.
-     */ 
-    void reset();
-    
-    /**
        @see reset()
      */
     ~Cursor();
     
-    Tree* tree() { return mTree; }
-    
-private:
-    Cursor(Tree* tree) { mTree = tree; }
-    
+private:    
     // Lower case because these two are part of the interface exposed to ops;
-    Range key;
-    Range value;
-    
-    Tree* mTree;
+    Buffer key;    
     ArrayStackGeneric<CursorFrame, 64> stackFrames;
     
     friend class ops;

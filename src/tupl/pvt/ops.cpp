@@ -3,8 +3,11 @@
 #include "Cursor.hpp"
 #include "CursorFrame.hpp"
 #include "Latch.hpp"
-#include "Node.hpp"
 #include "Tree.hpp"
+
+#include "slow/Node.hpp"
+
+using namespace tupl::pvt::slow;
 
 #include "ArrayStackGeneric.ii"
 
@@ -12,37 +15,15 @@ namespace tupl { namespace pvt {
 
 namespace {
 
-// TODO: In reality the iterator is an interator to a pointer.
-//       I don't want to expose too many pointers. 
-std::vector<Node*> gEmpty;
-
-/*
-   Empty class, just a place-holder for a type so that
-   overloads work correctly.
-   
-   Do not add any members or methods here. This class exists only
-   for clarity.
- */
-class InternalNode final : public Node {};
-
-/*
-   Empty class, just a place-holder for a type so that
-   overloads work correctly
-   
-   Do not add any members or methods here. This class exists only
-   for clarity.
- */
-class LeafNode final : public Node {};
-
 /*
   Returns a iterator to the child node where key should be 
  */ 
-Node::ChildIterator findChildNode(InternalNode& node, const Range& key) {
-    return gEmpty.end();
+Node* findChildNode(InternalNode& node, Bytes key) {
+    return node.lowerBound(key).node();
 }
 
 struct FindValueResult {
-    Range value() {
+    Bytes value() {
         assert(false);
         return {};
     }
@@ -50,8 +31,16 @@ struct FindValueResult {
     bool found() { return false; }
 };
 
-FindValueResult findValue(Tree& t, LeafNode& node, const Range& key) {
+FindValueResult findValue(Tree& t, LeafNode& node, Bytes key) {
     
+}
+
+bool isLeaf(const Node* const node) {
+    return node->type() == NodeType::LEAF;
+}
+
+bool isSplit(const Node* const node) {
+    return false;
 }
 
 }
@@ -65,7 +54,7 @@ Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
     for (size_t i = 1; i < numFrames; ++i) {
         auto& frame = stackFrames.top();
         // FIXME: abstract this better
-        Node* const node = frame.node.load(std::memory_order_acquire);
+        const auto node = frame.node.load(std::memory_order_acquire);
         auto toEraseIt = node->cursorFrames.s_iterator_to(frame); // s => static
         {
             Latch::scoped_exclusive_lock nodeLock(*node);
@@ -75,7 +64,7 @@ Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
     }
     
     auto& frame = stackFrames.top();
-    Node* const stackRoot = frame.node.load(std::memory_order_acquire);
+    const auto stackRoot = frame.node.load(std::memory_order_acquire);
     auto toEraseIt = stackRoot->cursorFrames.s_iterator_to(frame);
     
     Latch::scoped_exclusive_lock rootLock(*stackRoot);
@@ -83,7 +72,7 @@ Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
     stackFrames.pop();
     
     //FIXME: Deal with changing height by making this a "circular" stack
-    Node* const root = tree.root.load(std::memory_order_acquire);
+    const auto root = tree.root.load(std::memory_order_acquire);
     
     if (stackRoot != root) {
         rootLock = std::move(Latch::scoped_exclusive_lock(*root));
@@ -94,14 +83,14 @@ Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
 
 void ops::bubbleSplitUpOneLevel(Tree& t, Node& splitNodeParent, Node& splitNode)
 {
-    
+    throw std::logic_error("unimplemented");
 }
 
-void ops::find(Tree& tree, Cursor& visitor, const Range& key) {
+void ops::find(Tree& tree, Cursor& visitor, Bytes key) {
     // TODO: pre-conditions and post-conditions on these guys in
     //       the face of failure would be nice to have
-    visitor.key = key;
-    visitor.value = Range{};
+    visitor.key = Buffer{key.data(), key.size()};
+    // visitor.value = Bytes{};
     
     // Restore the cursor to the root
     Latch::scoped_exclusive_lock parentLock;
@@ -116,16 +105,14 @@ void ops::find(Tree& tree, Cursor& visitor, const Range& key) {
     Node* node = tree.root;
     assert(node);
     
-    while (!node->isLeaf()) {
+    while (!isLeaf(node)) {
         const auto in = static_cast<InternalNode*>(node);        
-        const auto childIt = findChildNode(*in, key);
-
-        Node* const childNode = *childIt;
+        auto const childNode = findChildNode(*in, key);
         
         {
-            Latch::scoped_exclusive_lock childLock{**childIt};
+            Latch::scoped_exclusive_lock childLock{*childNode};
             
-            if (childNode->split()) {
+            if (isSplit(childNode)) {
                 bubbleSplitUpOneLevel(tree, *childNode, *node);
                 // TODO: pick one of the children without re-searching
                 continue; // Parent lock is still held
@@ -139,13 +126,29 @@ void ops::find(Tree& tree, Cursor& visitor, const Range& key) {
         node = childNode;
     }
     
-    assert(node->isLeaf());
+    assert(isLeaf(node));
     assert(parentLock.owns_lock()); // leaf is safely locked
     
-    const auto leaf = static_cast<LeafNode*>(node);    
+    const auto leaf = static_cast<LeafNode*>(node);
     const auto findResult = findValue(tree, *leaf, key);
     
     CursorFrame frame;// TODO: bind with {leaf, findResult};
+}
+
+void ops::store(Tree& t, Cursor& visitor, Bytes value) {
+    // TODO: pre-check size
+    if (visitor.stackFrames.empty()) {
+        throw std::runtime_error("unpositioned");
+    }
+    
+    LeafNode* const leafNode = static_cast<LeafNode*>(
+        visitor.stackFrames.top().node.load(std::memory_order_acquire));
+    
+    Latch::scoped_exclusive_lock exclusiveLeafLock(*leafNode);
+    
+    // TODO: Used saved cursor position
+    leafNode->insert(
+        leafNode->end(), Bytes{visitor.key.data(), visitor.key.size()}, value);
 }
 
 } }

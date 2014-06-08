@@ -26,7 +26,7 @@
 
 #include <vector>
 
-namespace tupl { namespace pvt {
+namespace tupl { namespace pvt { namespace disabled {
 
 class PageAllocator;
 class Page {};
@@ -37,8 +37,6 @@ class Node: public Latch {
     class Id {};
     
 public:
-    typedef NodeChildIterator ChildIterator;
-    
     /*
       Note: Changing these values affects how the Database class handles the
       commit flag. It only needs to flip bit 0 to switch dirty states.
@@ -102,7 +100,7 @@ public:
         boost::intrusive::member_hook<
             CursorFrame,
             CursorFrame::ListMemberHook,
-            &CursorFrame::_fellowTravelers>
+            &CursorFrame::visitors_>
         > cursorFrames;
     
     // Raw contents of node.
@@ -118,7 +116,7 @@ public:
     Node(const Node& n) = delete;
     Node& operator=(const Node& n) = delete;    
     
-    friend class ::tupl::pvt::PageAllocator;
+    friend class ::tupl::pvt::disabled::PageAllocator;
 };
 
 /*
@@ -233,6 +231,6 @@ public:
 
 */
 
-} }
+} } } // namespace tupl::pvt::disabled
 
 #endif 

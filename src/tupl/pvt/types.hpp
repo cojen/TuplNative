@@ -1,13 +1,12 @@
 #ifndef _TUPL_PVT_TYPES_HPP
 #define _TUPL_PVT_TYPES_HPP
 
-#include <vector>
+#include <stddef.h>
 
 namespace tupl { namespace pvt {
 
-class Node;
-
-typedef std::vector<Node*>::iterator NodeChildIterator;
+// GCC < 4.9 doesn't have this available in cstddef under std::
+typedef long double MaxAlignT;
     
 } } // namespace tupl::pvt
 

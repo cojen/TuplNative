@@ -19,7 +19,7 @@
 
 #include "Node.hpp"
 
-namespace tupl { namespace pvt {
+namespace tupl { namespace pvt { namespace disabled {
 
 void PageAllocator::dirty(Node& nodeRef) {
     Node* const node = &nodeRef;
@@ -57,4 +57,4 @@ void PageAllocator::dirty(Node& nodeRef) {
     if (mFlushNext == node) { mFlushNext = next; }
 }
 
-} }
+} } } // namespace tupl::pvt::disabled

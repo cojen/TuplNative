@@ -15,11 +15,16 @@
   limitations under the License.
 */
 
+#ifndef _TUPL_PVT_TREE_HPP
+#define _TUPL_PVT_TREE_HPP
+
 #include <atomic>
+
+// TODO: clean this up and make the Node a proper duck-type
+#include "slow/Node.hpp"
 
 namespace tupl { namespace pvt {
 
-class Node;
 /**
   Represents a B+Tree.
   
@@ -44,9 +49,12 @@ class Tree final {
       
       The thread that created the split is still responsible for repairing the
       split or saving a reference to it for future cleanup.
-*/
-    std::atomic<Node*> root;
+    */
+    
+    std::atomic<slow::InternalNode*> root;
     friend class ops;
 };
 
 } }
+
+#endif

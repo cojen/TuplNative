@@ -21,7 +21,7 @@
 #include "Latch.hpp"
 #include "PageDb.hpp"
 
-namespace tupl { namespace pvt {
+namespace tupl { namespace pvt { namespace disabled {
 
 class Node;
 
@@ -63,6 +63,6 @@ public:
     void dirty(Node& node);
 };
 
-} }
+} } }
 
 #endif
