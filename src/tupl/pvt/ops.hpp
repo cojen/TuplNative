@@ -40,15 +40,31 @@ class Tree;
    an access controlled namespace.
  */
 class ops final {
-public:
-    void find(Tree& t, Cursor& visitor, Bytes key);
+public:    
+    static void find(Tree& t, Cursor& visitor, Bytes key);
     
 private:
-    typedef slow::Node Node;
+    ops() = delete;
     
-    Latch::scoped_exclusive_lock unwindAndLockRoot(Tree& tree, Cursor& visitor);
-    void bubbleSplitUpOneLevel(Tree& t, Node& splitNodeParent, Node& splitNode);
-    void store(Tree& t, Cursor& visitor, Bytes value);
+    typedef slow::Node Node;
+    typedef slow::LeafNode LeafNode;
+    
+    static Latch::scoped_exclusive_lock unwindAndLockRoot(
+        Tree& tree, Cursor& visitor);
+    
+    static void bubbleSplitUpOneLevel(
+        Tree& t, Node& splitNodeParent, Node& splitNode);
+    
+    static void store(Tree& t, Cursor& visitor, Bytes value);
+    
+    static LeafNode* splitLeaf(LeafNode& source, LeafNode::Iterator insertPos,
+                               Bytes key, Bytes value);
+    
+    static void moveFrames(Node& source, Node& sibling,
+                           std::size_t insertPos, std::size_t splitPos);
+    
+    template<typename Node>
+    static void split(Node& source, Node& sibling);
 };
 
 } }

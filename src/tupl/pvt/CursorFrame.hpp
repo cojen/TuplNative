@@ -36,13 +36,16 @@ class ops;
  */
 class CursorFrame final {
     typedef slow::Node Node;
+
+    Node* node() { return mNode.load(std::memory_order_acquire); }
     
-    std::atomic<Node*>    node;
+private:
+    std::atomic<Node*> mNode;
     
-    // Used to keep track of which key we're visiting
-    MaxAlignT position[128 / sizeof(MaxAlignT)];
-    
+private: //used by friends
+    std::size_t position;
     Bytes   notFoundKey; // TODO: Who owns me??
+    
 public:
     // Used to keep track of all the Cursor's visiting a Node
     // 
@@ -57,7 +60,7 @@ public:
             boost::intrusive::safe_link>> ListMemberHook;
 
     ListMemberHook visitors_;
-
+    
     friend class ops;
 };
 

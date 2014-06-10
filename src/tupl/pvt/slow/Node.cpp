@@ -18,9 +18,15 @@ InternalNode::Iterator InternalNode::lowerBound(RawBytes key) {
 InsertResult InternalNode::insert(
     Iterator position, RawBytes key, Node& node)
 {
-    const auto newBytes = mBytes + residentSizeOf(key);
+    const size_t keySize = residentSizeOf(key);
+    // ensure that a split always produces siblings with at least two keys
+    if (keySize > maxBytes() / 4) { 
+        throw std::invalid_argument("key too big");
+    }
     
-    if (newBytes > capacity()) { return InsertResult{false}; }
+    const auto newBytes = mBytes + keySize;
+    
+    if (newBytes > maxBytes()) { return InsertResult::FAILED_NO_SPACE; }
     
     const auto oldSize = mChildren.size();
     
@@ -31,27 +37,50 @@ InsertResult InternalNode::insert(
 
     mBytes = newBytes;
     
-    return InsertResult{true};
+    return InsertResult::INSERTED;
 }
 
 InsertResult LeafNode::insert(
     Iterator position, RawBytes key, RawBytes value)
-{
-    const auto newBytes = mBytes + residentSizeOf(key, value);
+{    
+    const size_t keySize = residentSizeOf(key);
+    if (keySize > maxBytes() / 4) {
+        throw std::invalid_argument("key too big");
+    }
+
+    const size_t kvSize = residentSizeOf(key, value);
+    if ((kvSize - keySize) > maxBytes() / 4) {
+        throw std::invalid_argument("value too big");
+    }
     
-    if (newBytes > capacity()) { return InsertResult{false}; }
+    const auto newBytes = mBytes + kvSize;
     
+    if (newBytes > maxBytes()) { return InsertResult::FAILED_NO_SPACE; }
     const auto oldSize = mValues.size();
-    
-    mValues.emplace_hint(position.mIt,
-                         Buffer{key.data(), key.size()},
-                         Buffer{value.data(), value.size()});
+
+    mValues.insert(position.base(),
+                   std::make_pair(Buffer{key.data(), key.size()},
+                                  Buffer{value.data(), value.size()}));
     
     if (oldSize == mValues.size()) { throw std::logic_error("key exists"); }
     
     mBytes = newBytes;
     
-    return InsertResult{true};
+    return InsertResult::INSERTED;
+}
+
+LeafNode::Iterator LeafNode::moveEntries(
+    LeafNode& src, Iterator srcBegin, Iterator srcEnd,
+    LeafNode& /* dst */, Iterator tgtBegin)
+{
+    auto srcBeginIt = srcBegin.base();
+    auto srcEndIt = srcEnd.base();
+    
+    auto retVal = std::move(srcBeginIt, srcEndIt, tgtBegin.base());
+    
+    src.mValues.erase(srcBeginIt, srcEndIt);
+    
+    return {retVal, BufferPairToBytesPair()};
 }
 
 } } }
