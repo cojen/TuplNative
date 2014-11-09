@@ -26,7 +26,7 @@ std::ostream& operator<<(std::ostream& os, LeafNode& node) {
 }
 
 bool isOrdered(LeafNode& node) {
-    if (node.size() <= 2) { return true; }
+    if (node.size() < 2) { return true; }
     
     const auto end = node.end();
     auto prev = node.begin();
