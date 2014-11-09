@@ -12,31 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include_directories(src)
 
-include_directories (${TEST_SOURCE_DIR}/src)
-# include(CMakePrintHelpers)
+file(GLOB_RECURSE Sources FOLLOW_SYMLINKS src/*.cpp)
 
-add_definitions(-DBOOST_TEST_DYN_LINK)
+add_library(Tupl ${Sources})
 
-aux_source_directory(tupl TuplTestSource)
-foreach(SrcFile ${TuplTestSource})
+target_link_libraries(Tupl
+  ${Boost_SYSTEM_LIBRARY}
+  ${Boost_THREAD_LIBRARY}
+  )
+
+file(GLOB_RECURSE TestSources FOLLOW_SYMLINKS test/*.cpp)
+foreach(TestSource ${TestSources})
+  get_filename_component(TEST_NAME ${TestSource} NAME_WE)
+  add_executable(${TEST_NAME} ${TestSource})
+  add_test(${TEST_NAME} ${TEST_NAME})  
+  set_target_properties(${TEST_NAME} PROPERTIES COMPILE_FLAGS -DBOOST_TEST_DYN_LINK)
   
-  add_executable(${SrcFile} ${SrcFile})
-  
-  target_link_libraries(${SrcFile}
+  target_link_libraries(${TEST_NAME}
     Tupl
     ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-
-  add_test(TuplTests ${SrcFile})
-endforeach()
-
-aux_source_directory(tupl/pvt TuplPvtTestSources)
-foreach(SrcFile ${TuplPvtTestSources})
-  add_executable(${SrcFile} ${SrcFile})
-  
-  target_link_libraries(${SrcFile}
-    Tupl
-    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-  
-  add_test(TuplPvtTestSources ${SrcFile})
 endforeach()

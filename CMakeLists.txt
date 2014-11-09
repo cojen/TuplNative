@@ -27,12 +27,11 @@ endif()
 #       This works for now
 set(BUILD_SHARED_LIBS true)
 
-FIND_PACKAGE(Boost COMPONENTS thread unit_test_framework REQUIRED)
+enable_testing()
+
+FIND_PACKAGE(Boost COMPONENTS system thread unit_test_framework REQUIRED)
 IF (Boost_FOUND)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 ENDIF()
 
-add_subdirectory (src)
-
-enable_testing()
-add_subdirectory (test)
+add_subdirectory (libTupl)
