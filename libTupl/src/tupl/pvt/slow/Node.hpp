@@ -1,3 +1,6 @@
+#ifndef _TUPL_PVT_SLOW_NODE_HPP
+#define _TUPL_PVT_SLOW_NODE_HPP
+
 /*
   Copyright (C) 2012-2014 Brian S O'Neill
   Copyright (C) 2014      Vishal Parakh
@@ -14,9 +17,6 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  */
-
-#ifndef _TUPL_PVT_SLOW_NODE_HPP
-#define _TUPL_PVT_SLOW_NODE_HPP
 
 /**
    Minimal implementation of the Node "interface" that is needed for a Tree
@@ -44,8 +44,6 @@
 #include <boost/iterator/transform_iterator.hpp>
 
 namespace tupl { namespace pvt { namespace slow {
-
-typedef Bytes RawBytes;
 
 class Split {  
 };
@@ -75,17 +73,21 @@ public:
     }
     
     void clearSplit() { mSibling = nullptr; }
+
+    std::size_t bytes() { return mBytes; }
+    
+    size_t capacity() const { return mCapacity; }
     
 protected:
+    class Ops;
+    
     Node(NodeType nodeType) :
-        mNodeType(nodeType), mMaxBytes(4096), mSibling() {}
+        mNodeType(nodeType), mCapacity(4096), mBytes(0), mSibling() {}
     
     template<typename T>
     std::pair<T*, SiblingDirection> split() {
         return std::make_pair(static_cast<T*>(mSibling), mSiblingDirection);
     }
-    
-    size_t maxBytes() const { return mMaxBytes; }
     
 private:
     typedef boost::intrusive::list_member_hook<
@@ -93,7 +95,7 @@ private:
             boost::intrusive::safe_link>> ListMemberHook;
 
     const NodeType mNodeType;
-    const std::uint_fast16_t mMaxBytes;
+    const std::uint_fast16_t mCapacity;
     
 protected:
     std::uint_fast16_t mBytes;
@@ -121,6 +123,8 @@ public:
     
     // Do not use directly, for manipluation by boost::intrusive container
     ListMemberHook mUsageListHook_; // guarded by the page allocator
+
+    friend class Ops;
     
 };
 
@@ -129,7 +133,9 @@ enum class InsertResult {
     INSERTED,
 };
 
-class RemoveResult {
+enum class RemoveResult {
+    REMOVED,
+    NOT_FOUND,    
 };
 
 class InternalNode;
@@ -154,13 +160,13 @@ public:
     InternalNode(InternalNode& internalChild)
         : Node(NodeType::INTERNAL), mLastChild(&internalChild), mBytes(0) {}
     
-    Iterator lowerBound(RawBytes key);
+    Iterator lowerBound(Bytes key);
     
     Iterator begin() { return mChildren.begin(); }
     Iterator end()   { return mChildren.end(); }
     
-    InsertResult insert(Iterator position, RawBytes key, Node& node);
-    RemoveResult remove(RawBytes key);
+    InsertResult insert(Iterator position, Bytes key, Node& node);
+    RemoveResult remove(Bytes key);
 
     std::size_t size() const { return mChildren.size(); }
 private:
@@ -176,7 +182,8 @@ class LeafNode final: public Node {
     typedef std::vector<std::pair<Buffer, Buffer>> ValuesMap;
     
     struct BufferPairToBytesPair {
-        std::pair<Bytes, Bytes> operator()(const ValuesMap::value_type& t) {
+        std::pair<Bytes, Bytes> operator()(const ValuesMap::value_type& t) const
+        {
             return std::make_pair(Bytes{t.first.data(),  t.first.size()},
                                   Bytes{t.second.data(), t.second.size()});
         }
@@ -184,8 +191,7 @@ class LeafNode final: public Node {
     
 public:
     typedef boost::transform_iterator<BufferPairToBytesPair,
-                                      ValuesMap::iterator,
-                                      std::pair<Bytes, Bytes>&
+                                      ValuesMap::iterator
                                       > Iterator;
     
     LeafNode() : Node(NodeType::LEAF) {}
@@ -195,11 +201,14 @@ public:
     Iterator begin() { return { mValues.begin(), BufferPairToBytesPair() }; }
     Iterator end()   { return { mValues.end(), BufferPairToBytesPair() }; }
     
-    InsertResult insert(Iterator position, RawBytes key, RawBytes value);
+    InsertResult insert(Bytes key, Bytes value);
+    InsertResult insert(Iterator position, Bytes key, Bytes value);
     
-    RemoveResult remove(RawBytes key);
+    RemoveResult remove(Bytes key);
     
     std::size_t size() const { return mValues.size(); }
+    
+    void splitAndInsert(Bytes key, Bytes value, LeafNode& sibling);
     
     std::pair<LeafNode*, SiblingDirection> split() {
         return Node::split<LeafNode>();

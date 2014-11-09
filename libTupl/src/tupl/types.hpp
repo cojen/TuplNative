@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cstdint>
 #include <utility>
+#include <algorithm>
 
 namespace tupl {
 
@@ -37,6 +38,10 @@ class Bytes {
 public:
     Bytes() : Bytes(nullptr, 0) {}
     Bytes(const void* data, std::size_t size);
+    
+    template<typename BytesContainer>
+    Bytes(const BytesContainer& container)
+        : Bytes(container.data(), container.size()) {}
     
     const byte* data() const { return mData; }
     std::size_t size() const { return mSize; }
@@ -61,7 +66,22 @@ Bytes::Bytes(const void* data, const std::size_t size)
     : mData(static_cast<const byte*>(data)), mSize(size)
 {
     assert(size > 0 ? data != nullptr : true);
-    assert(data != nullptr ? size > 0 : true);
+    assert(data == nullptr ? size > 0 : true);
+}
+
+inline
+bool operator<(const Bytes l, const Bytes r) {
+    return std::lexicographical_compare(l.data(), l.data() + l.size(),
+                                        r.data(), r.data() + r.size());
+}
+
+inline
+bool operator<=(const Bytes l, const Bytes r) {
+    return std::lexicographical_compare(
+        l.data(), l.data() + l.size(),
+        r.data(), r.data() + r.size(),
+        [](const byte l, const byte r) { return l <= r; }
+        );
 }
 
 }
