@@ -13,14 +13,14 @@ Naming Conventions:
 
 Members:
 
-*Private members are prefixed by "m". Example: "mName". Except:
+*Private members are prefixed by "`m`". Example: "`mName`". Except:
 
 **Private members that form part of the class's interface in the case of
   friendship are not prefixed
 
-*Members that are meant to not be accessed directly get a "_" suffix.
+*Members that are meant to not be accessed directly get a "`_`" suffix.
  Example boost::intrusive member hooks
 
 **Members that are private and are not meant to be accessed directly get
-  both the "m" prefix and the "_" suffix. Example: "mAlwaysUseAccessor_"
+  both the "`m`" prefix and the "`_`" suffix. Example: "`mAlwaysUseAccessor_`"
   
