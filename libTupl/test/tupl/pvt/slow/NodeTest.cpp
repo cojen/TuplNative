@@ -60,6 +60,9 @@ BOOST_AUTO_TEST_CASE(LeafNodeBasicTest) {
     BOOST_CHECK_EQUAL(1, node.size());
     BOOST_CHECK_EQUAL(expectedBytes, node.bytes());
     
+    BOOST_CHECK_THROW(node.insert(key, value), std::invalid_argument);
+    BOOST_CHECK(isOrdered(node));
+    
     for (size_t i = 1; node.bytes() < node.capacity(); ++i) {
         ostringstream keyStr;
         keyStr << "key-"  << i;
@@ -76,11 +79,7 @@ BOOST_AUTO_TEST_CASE(LeafNodeBasicTest) {
             BOOST_CHECK(insertResult == InsertResult::FAILED_NO_SPACE);
             break;
         }
-    }
-
-    // duplicate key detection is presently broken
-    BOOST_WARN_THROW(node.insert(key, value), std::invalid_argument);
-    BOOST_WARN(isOrdered(node));
+    }    
 }
 
 BOOST_AUTO_TEST_CASE(LeafNodeSplitTest) {

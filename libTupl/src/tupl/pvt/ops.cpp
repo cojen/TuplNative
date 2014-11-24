@@ -23,7 +23,7 @@ namespace {
   Returns a iterator to the child node where key should be 
  */ 
 Node* findChildNode(InternalNode& node, Bytes key) {
-    return node.lowerBound(key).node();
+    return node.lowerBound(key)->second;
 }
 
 struct FindValueResult {

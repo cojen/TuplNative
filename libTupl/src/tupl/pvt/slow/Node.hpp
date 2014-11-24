@@ -39,26 +39,35 @@
 
 #include <boost/operators.hpp>
 #include <boost/intrusive/list.hpp>
-#include <boost/container/flat_map.hpp>
 #include <boost/container/string.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 
 namespace tupl { namespace pvt { namespace slow {
 
-class Split {  
-};
-
 enum class NodeType {
     LEAF,
-    FRAGMENT,
     INTERNAL,
+    FRAGMENT,
     ROOT,
     UNDO_LOG
 };
 
-enum class SiblingDirection {
+enum class SiblingDirection : bool {
     LEFT  = 0x0,
     RIGHT = 0x1,    
+};
+
+enum class InsertResult {
+    FAILED_NO_SPACE,
+    INSERTED,
+};
+
+class Node;
+
+struct Split final {
+    Node* sibling;
+    SiblingDirection direction;
+    Buffer splitKey;
 };
 
 class Node: public pvt::Latch {
@@ -66,14 +75,18 @@ public:
     // void bindCursorFrame(Iterator, pvt::CursorFrame);
     NodeType type() const { return mNodeType; }
     
-    void recordSplit(Node& sibling, const SiblingDirection direction) {
-        assert(!mSibling && (&sibling));
-        mSibling = &sibling;
-        mSiblingDirection = direction;
+    void recordSplit(
+        Node& sibling, const SiblingDirection direction, Buffer&& splitKey)
+    {
+        assert(mSplit.sibling == nullptr);
+        mSplit.sibling = &sibling;
+        mSplit.direction = direction;
     }
     
-    void clearSplit() { mSibling = nullptr; }
-
+    Split clearSplit() {
+        return std::move(mSplit);
+    }
+    
     std::size_t bytes() { return mBytes; }
     
     size_t capacity() const { return mCapacity; }
@@ -82,12 +95,9 @@ protected:
     class Ops;
     
     Node(NodeType nodeType) :
-        mNodeType(nodeType), mCapacity(4096), mBytes(0), mSibling() {}
+        mNodeType(nodeType), mCapacity(4096), mBytes(0), mSplit() {}
     
-    template<typename T>
-    std::pair<T*, SiblingDirection> split() {
-        return std::make_pair(static_cast<T*>(mSibling), mSiblingDirection);
-    }
+    const bool split() const { return mSplit.sibling != nullptr; }
     
 private:
     typedef boost::intrusive::list_member_hook<
@@ -101,8 +111,7 @@ protected:
     std::uint_fast16_t mBytes;
     
 private:
-    Node* mSibling;
-    SiblingDirection mSiblingDirection;
+    Split mSplit;
     
 public:
     // CursorFrame's bound to this Node
@@ -123,14 +132,8 @@ public:
     
     // Do not use directly, for manipluation by boost::intrusive container
     ListMemberHook mUsageListHook_; // guarded by the page allocator
-
-    friend class Ops;
     
-};
-
-enum class InsertResult {
-    FAILED_NO_SPACE,
-    INSERTED,
+    friend class ::tupl::pvt::slow::Node::Ops;
 };
 
 enum class RemoveResult {
@@ -140,42 +143,6 @@ enum class RemoveResult {
 
 class InternalNode;
 class LeafNode;
-
-class InternalNode final: public Node {
-    typedef pvt::Buffer Buffer;
-    typedef boost::container::flat_map<Buffer, Node*> ChildMap;
-    
-public:
-    class Iterator {
-    public:
-        Node* node() { return mIt->second; }    
-    private:        
-        Iterator(ChildMap::iterator it) : mIt(it) {}
-        const ChildMap::iterator mIt;
-        friend class InternalNode;  
-    };
-    
-    InternalNode(LeafNode& leafChild);
-    
-    InternalNode(InternalNode& internalChild)
-        : Node(NodeType::INTERNAL), mLastChild(&internalChild), mBytes(0) {}
-    
-    Iterator lowerBound(Bytes key);
-    
-    Iterator begin() { return mChildren.begin(); }
-    Iterator end()   { return mChildren.end(); }
-    
-    InsertResult insert(Iterator position, Bytes key, Node& node);
-    RemoveResult remove(Bytes key);
-
-    std::size_t size() const { return mChildren.size(); }
-private:
-    Node* mLastChild;
-    std::uint_fast16_t mBytes;
-    InternalNode* mSibling;
-    
-    ChildMap mChildren;
-};
 
 class LeafNode final: public Node {
     typedef pvt::Buffer Buffer;
@@ -196,36 +163,99 @@ public:
     
     LeafNode() : Node(NodeType::LEAF) {}
     
-    Iterator find();
+    Iterator find(Bytes key);
 
-    Iterator begin() { return { mValues.begin(), BufferPairToBytesPair() }; }
-    Iterator end()   { return { mValues.end(), BufferPairToBytesPair() }; }
+    Iterator begin() { return { mChildren.begin(), BufferPairToBytesPair() }; }
+    Iterator end()   { return { mChildren.end(), BufferPairToBytesPair() }; }
     
     InsertResult insert(Bytes key, Bytes value);
     InsertResult insert(Iterator position, Bytes key, Bytes value);
     
-    RemoveResult remove(Bytes key);
-    
-    std::size_t size() const { return mValues.size(); }
+    std::size_t size() const { return mChildren.size(); }
+
+    bool empty() const { return mChildren.empty(); }
     
     void splitAndInsert(Bytes key, Bytes value, LeafNode& sibling);
-    
-    std::pair<LeafNode*, SiblingDirection> split() {
-        return Node::split<LeafNode>();
-    }
     
     static Iterator moveEntries(
         LeafNode& src, Iterator srcBegin, Iterator srcEnd,
         LeafNode& dst, Iterator tgtBegin);    
 private:
-    ValuesMap mValues;
+    ValuesMap mChildren;
+    
+    friend class ::tupl::pvt::slow::Node::Ops;
 };
 
-inline
-InternalNode::InternalNode(LeafNode& leafChild)
-    : Node(NodeType::INTERNAL), mLastChild(&leafChild), mBytes(0)
-{
-}
+class InternalNode final: public Node {
+    typedef std::vector<std::pair<Buffer, Node*>> ChildMap;
+
+    struct BufferKeyToBytesKeyPair {
+        std::pair<Bytes, Node*> operator()(const ChildMap::value_type& t) const
+        {
+            return std::make_pair(Bytes{t.first.data(),  t.first.size()},
+                                  t.second);
+        }
+    };
+    
+public:
+    typedef boost::transform_iterator<BufferKeyToBytesKeyPair,
+                                      ChildMap::iterator
+                                      > Iterator;
+    
+    InternalNode(Node& leftestChild);
+    
+    // InternalNode(LeafNode& leafChild);
+    
+    // InternalNode(InternalNode& internalChild)
+    //     : Node(NodeType::INTERNAL), mLastChild(&internalChild), mBytes(0) {}
+
+    Iterator find(Bytes key);
+    
+    Iterator lowerBound(Bytes key) { assert(0); }
+    
+    Iterator begin() { return { mChildren.begin(), BufferKeyToBytesKeyPair() };}
+    Iterator end()   { return { mChildren.end(), BufferKeyToBytesKeyPair() }; }
+    
+    InsertResult insert(Iterator position, Bytes key, LeafNode& value) {
+        return insertGeneric(position, key, value);
+    }
+    
+    InsertResult insert(Iterator position, Bytes key, InternalNode& value) {
+        return insertGeneric(position, key, value);
+    }
+    
+    InsertResult insert(Bytes key, InternalNode& value) {
+        return insertGeneric(key, value);
+    }
+    
+    InsertResult insert(Bytes key, LeafNode& value) {
+        return insertGeneric(key, value);
+    }
+    
+    void splitAndInsert(Bytes key, InternalNode& value, InternalNode& sibling) {
+        return splitAndInsertGeneric(key, value, sibling);
+    }
+    
+    void splitAndInsert(Bytes key, LeafNode& value, InternalNode& sibling) {
+        return splitAndInsertGeneric(key, value, sibling);
+    }
+    
+    std::size_t size() const { return mChildren.size(); }
+    
+    bool empty() const { return mChildren.empty(); }
+    
+private:
+    InsertResult insertGeneric(Iterator position, Bytes key, Node& value);
+    
+    InsertResult insertGeneric(Bytes key, Node& value);
+    
+    void splitAndInsertGeneric(Bytes key, Node& value, InternalNode& sibling);
+    
+    std::uint_fast16_t mBytes;
+    ChildMap mChildren;
+    
+    friend class ::tupl::pvt::slow::Node::Ops;
+};
 
 } } } // namespace tupl::pvt::slow
 
