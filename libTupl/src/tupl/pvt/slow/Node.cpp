@@ -1,3 +1,19 @@
+/*
+  Copyright (C) 2014      Vishal Parakh
+  
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+ 
+      http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
 #include "Node.hpp"
 
 #include <iterator>
@@ -151,14 +167,12 @@ public:
         const auto availableBytes = original.capacity() - usedBytes;
         const auto size = original.mChildren.size();
     
-        if (entryBytes < availableBytes || size < 4) {
+        if (entryBytes < availableBytes || size < 3) {
             throw std::domain_error("split is not required");
         }
     
         const auto beginIt = original.mChildren.begin();
         const auto endIt   = original.mChildren.end();
-    
-        const auto splitBeginIt = beginIt + size / 2;
     
         // TODO: Use custom lower_bound that checks for duplicates
         const auto origInsertIt = std::lower_bound(
@@ -167,44 +181,39 @@ public:
         if (origInsertIt != endIt && KeyEquals()(key, *origInsertIt)) {
             throw std::invalid_argument("duplicate key not allowed");
         }
+
+        // account for the element about to be inserted
+        const auto splitBeginIt = beginIt + (size + 1) / 2;
+        
+        auto siblingDirection = SiblingDirection::RIGHT;
+        auto moveBeginIt = splitBeginIt;
+        auto moveEndIt = endIt;
+        
+        if (origInsertIt < splitBeginIt) {
+            moveBeginIt = beginIt;
+            moveEndIt = splitBeginIt;
+            siblingDirection = SiblingDirection::LEFT;
+        }
+        
+        Buffer splitKey;
+        
+        if (original.type() == NodeType::LEAF) {
+            splitKey = splitBeginIt->first;
+        } else {
+            splitKey.swap(splitBeginIt->first);
+        }
         
         auto siblingEndInserter = std::back_inserter(sibling.mChildren);
-    
-        if (origInsertIt < splitBeginIt) { // new element goes to the left half
-            std::move(beginIt, origInsertIt, siblingEndInserter);
         
-            siblingEndInserter = std::make_pair(Buffer{key.data(), key.size()},
-                                                transformToNodeValue(value));
+        std::move(moveBeginIt, origInsertIt, siblingEndInserter);
         
-            std::move(origInsertIt, splitBeginIt, siblingEndInserter);
+        siblingEndInserter = std::make_pair(
+            Buffer{key.data(), key.size()}, transformToNodeValue(value));
         
-            original.mChildren.erase(beginIt, splitBeginIt);
-            
-            if (original.type() == NodeType::INTERNAL) {
-                splitBeginIt->first = Buffer{};
-                original.recordSplit(sibling, SiblingDirection::LEFT);
-            } else {
-                original.recordSplit(sibling, SiblingDirection::LEFT);
-            }
-        } else { // new element goes to right half
-            if (original.type() == NodeType::INTERNAL) {
-                siblingEndInserter =
-                    std::make_pair(Buffer{}, std::move(splitBeginIt->second));
-                
-                std::move(splitBeginIt + 1, origInsertIt, siblingEndInserter);
-            } else {
-                std::move(splitBeginIt, origInsertIt, siblingEndInserter);
-            }
-            
-            siblingEndInserter = std::make_pair(Buffer{key.data(), key.size()},
-                                                transformToNodeValue(value));
+        std::move(origInsertIt, moveEndIt, siblingEndInserter);
         
-            std::move(origInsertIt, endIt, siblingEndInserter);
-        
-            original.mChildren.erase(splitBeginIt, endIt);
-        
-            original.recordSplit(sibling, SiblingDirection::RIGHT);
-        }
+        original.mChildren.erase(moveBeginIt, moveEndIt);
+        original.recordSplit(sibling, siblingDirection, std::move(splitKey));
     }
 };
 
@@ -272,7 +281,7 @@ LeafNode::Iterator LeafNode::moveEntries(
 
   The "slow" node implementation has every internal node key maintain a pointer
   to a child whose keys are GE than itself. The extra pointer is therefore
-  logically to the left
+  logically to the left (SS)
   
                     +--------------+
                     | SS | 50 | 80 | 
@@ -306,6 +315,7 @@ LeafNode::Iterator LeafNode::moveEntries(
     -Add the split key to the set with a reference to the new node    
        
   Internal Node splits:
-    -Split Key is set to sentinel
+    -Split Key is set to sentinel value in the node where it belongs
+     (original or sibling)
     -Split Key is bubbled to parent as the split key
-*/ 
+*/

@@ -81,6 +81,7 @@ public:
         assert(mSplit.sibling == nullptr);
         mSplit.sibling = &sibling;
         mSplit.direction = direction;
+        mSplit.splitKey = splitKey;
     }
     
     Split clearSplit() {
@@ -97,7 +98,7 @@ protected:
     Node(NodeType nodeType) :
         mNodeType(nodeType), mCapacity(4096), mBytes(0), mSplit() {}
     
-    const bool split() const { return mSplit.sibling != nullptr; }
+    bool split() const { return mSplit.sibling != nullptr; }
     
 private:
     typedef boost::intrusive::list_member_hook<

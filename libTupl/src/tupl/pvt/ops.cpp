@@ -175,48 +175,51 @@ void ops::store(Tree& t, Cursor& visitor, Bytes value) {
 LeafNode* ops::splitLeaf(
     LeafNode& source, LeafNode::Iterator insertIt, Bytes key, Bytes value)
 {
-    // TODO: Allocate a new Node
-    auto& sibling = *static_cast<LeafNode*>(nullptr);
-    const auto sourceSize = source.size() + 1;
+
+    throw std::logic_error("unimplemented");
     
-    assert(sourceSize >= 4);
+    // // TODO: Allocate a new Node
+    // auto& sibling = *static_cast<LeafNode*>(nullptr);
+    // const auto sourceSize = source.size() + 1;
     
-    const auto medianPos = sourceSize / 2;
+    // assert(sourceSize >= 4);
     
-    const auto insertPos =
-        makeUnsigned(std::distance(source.begin(), insertIt));
+    // const auto medianPos = sourceSize / 2;
     
-    const auto srcBegin   = source.begin();
-    const auto srcEnd     = source.end();
-    const auto siblingEnd = sibling.end();
+    // const auto insertPos =
+    //     makeUnsigned(std::distance(source.begin(), insertIt));
     
-    if (insertPos > medianPos) { // cleave the "right" side
-        source.recordSplit(sibling, SiblingDirection::RIGHT);
-        
-        LeafNode::moveEntries(
-            source, srcBegin + medianPos, srcBegin + insertPos,
-            sibling, siblingEnd);
-        
-        sibling.insert(siblingEnd, key, value);
-        
-        LeafNode::moveEntries(source, srcBegin + insertPos, srcEnd,
-                              sibling, siblingEnd);
-        
-    } else { // cleave the "left" side
-        source.recordSplit(sibling, SiblingDirection::LEFT);
-        
-        LeafNode::moveEntries(source, srcBegin, srcBegin + insertPos,
-                              sibling, siblingEnd);
-        
-        sibling.insert(siblingEnd, key, value);
-        
-        LeafNode::moveEntries(
-            source, srcBegin + insertPos, srcBegin + medianPos,
-            sibling, siblingEnd);
-    }
+    // const auto srcBegin   = source.begin();
+    // const auto srcEnd     = source.end();
+    // const auto siblingEnd = sibling.end();
     
-    moveFrames(source, sibling, insertPos, medianPos);
-    return &sibling;
+    // if (insertPos > medianPos) { // cleave the "right" side
+    //     source.recordSplit(sibling, SiblingDirection::RIGHT);
+        
+    //     LeafNode::moveEntries(
+    //         source, srcBegin + medianPos, srcBegin + insertPos,
+    //         sibling, siblingEnd);
+        
+    //     sibling.insert(siblingEnd, key, value);
+        
+    //     LeafNode::moveEntries(source, srcBegin + insertPos, srcEnd,
+    //                           sibling, siblingEnd);
+        
+    // } else { // cleave the "left" side
+    //     source.recordSplit(sibling, SiblingDirection::LEFT);
+        
+    //     LeafNode::moveEntries(source, srcBegin, srcBegin + insertPos,
+    //                           sibling, siblingEnd);
+        
+    //     sibling.insert(siblingEnd, key, value);
+        
+    //     LeafNode::moveEntries(
+    //         source, srcBegin + insertPos, srcBegin + medianPos,
+    //         sibling, siblingEnd);
+    // }
+    
+    // moveFrames(source, sibling, insertPos, medianPos);
+    // return &sibling;
 }
 
 /**

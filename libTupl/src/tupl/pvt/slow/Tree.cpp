@@ -73,11 +73,11 @@ void Tree::insertRecursive(Node& node, InsertContext& ctx) {
     } else {
         assert(node.type() == NodeType::INTERNAL);
         
-        auto& cur = *ptrCast<InternalNode>(&node);
-        auto nextIt = cur.find(ctx.key);
-        auto next = nextIt->second;
+        // auto& cur = *ptrCast<InternalNode>(&node);
+        // auto nextIt = cur.find(ctx.key);
+        // auto next = nextIt->second;
         
-        insertRecursive(*next, ctx);
+        // insertRecursive(*next, ctx);
         
         // auto split = next.split();
         
