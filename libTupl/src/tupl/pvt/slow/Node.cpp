@@ -154,9 +154,9 @@ public:
         return InsertResult::INSERTED;
     }
     
-    template<typename Value, typename NodeTyp>
+    template<typename Value, typename NodeT>
     static void splitAndInsert(Bytes key, Value& value,
-                               NodeTyp& original, NodeTyp& sibling) 
+                               NodeT& original, NodeT& sibling) 
     {
         assert(original.type() == sibling.type());
         
@@ -200,6 +200,7 @@ public:
         if (original.type() == NodeType::LEAF) {
             splitKey = splitBeginIt->first;
         } else {
+            // Saves split key for migration up to the parent
             splitKey.swap(splitBeginIt->first);
         }
         
@@ -214,6 +215,28 @@ public:
         
         original.mChildren.erase(moveBeginIt, moveEndIt);
         original.recordSplit(sibling, siblingDirection, std::move(splitKey));
+        
+        recalculateBytesUsed(original);
+        recalculateBytesUsed(sibling);
+    }
+    
+    template<typename NodeT>
+    static void recalculateBytesUsed(NodeT& node) {
+        struct {
+            size_t operator()(const std::pair<Bytes, Node*>& kvPair) const {
+                return kvPair.first.size() + sizeof(Node*);
+            }
+            
+            size_t operator()(const std::pair<Bytes, Bytes>& kvPair) const {
+                return kvPair.first.size() + kvPair.second.size();
+            }
+        } entrySize;
+        
+        size_t total = 0;
+        
+        for (const auto& kvPair : node) { total += entrySize(kvPair); }
+        
+        node.mBytes = total;
     }
 };
 
@@ -228,19 +251,17 @@ InternalNode::InternalNode(Node& leftestChild) :
     //                                       &right));
 }
 
-InsertResult InternalNode::insertGeneric(Bytes key, Node& value)
+InsertResult InternalNode::insert(Bytes key, Node& value)
 {
     return Ops::insert(key, value, *this);
 }
 
-InsertResult InternalNode::insertGeneric(
-    Iterator position, Bytes key, Node& value)
+InsertResult InternalNode::insert(Iterator position, Bytes key, Node& value)
 {
     return Ops::insert(position.base(), key, value, *this);
 }
 
-void InternalNode::splitAndInsertGeneric(
-    Bytes key, Node& value, InternalNode& sibling)
+void InternalNode::splitAndInsert(Bytes key, Node& value, InternalNode& sibling)
 {
     Ops::splitAndInsert(key, value, *this, sibling);
 }
@@ -279,9 +300,10 @@ LeafNode::Iterator LeafNode::moveEntries(
 /*
   Split Logic for Internal Nodes:
 
-  The "slow" node implementation has every internal node key maintain a pointer
-  to a child whose keys are GE than itself. The extra pointer is therefore
-  logically to the left (SS)
+  The "slow" node implementation users a std::vector of key/pointer pairs.
+
+  Every internal node key maintain a pointer to a child whose keys are GE than
+  itself. The extra pointer is therefore logically to the left (SS)
   
                     +--------------+
                     | SS | 50 | 80 | 

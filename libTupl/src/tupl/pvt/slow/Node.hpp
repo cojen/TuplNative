@@ -34,6 +34,7 @@
 #include "../Latch.hpp"
 #include "../CursorFrame.hpp"
 #include "../Buffer.hpp"
+#include "../ptrCast.hpp"
 
 #include <cassert>
 #include <vector>
@@ -65,10 +66,11 @@ enum class InsertResult {
 
 class Node;
 
+template<typename NodeT>
 struct Split final {
-    Node* sibling;
+    NodeT* sibling;
     SiblingDirection direction;
-    Buffer splitKey;
+    Buffer key;
 };
 
 class Node: public pvt::Latch {
@@ -82,24 +84,21 @@ public:
         assert(mSplit.sibling == nullptr);
         mSplit.sibling = &sibling;
         mSplit.direction = direction;
-        mSplit.splitKey = splitKey;
-    }
-    
-    Split clearSplit() {
-        return std::move(mSplit);
+        mSplit.key = splitKey;
     }
     
     std::size_t bytes() { return mBytes; }
     
     size_t capacity() const { return mCapacity; }
     
+    
+    bool hasSibling() const { return mSplit.sibling != nullptr; }
+    
 protected:
     class Ops;
     
     Node(NodeType nodeType) :
         mNodeType(nodeType), mCapacity(4096), mBytes(0), mSplit() {}
-    
-    bool split() const { return mSplit.sibling != nullptr; }
     
 private:
     typedef boost::intrusive::list_member_hook<
@@ -110,10 +109,8 @@ private:
     const std::uint_fast16_t mCapacity;
     
 protected:
-    std::uint_fast16_t mBytes;
-    
-private:
-    Split mSplit;
+    std::uint_fast16_t mBytes;    
+    Split<Node> mSplit;
     
 public:
     // CursorFrame's bound to this Node
@@ -178,6 +175,8 @@ public:
     bool empty() const { return mChildren.empty(); }
     
     void splitAndInsert(Bytes key, Bytes value, LeafNode& sibling);
+
+    const Split<LeafNode>& split() { return *ptrCast<Split<LeafNode>>(&mSplit); }
     
     static Iterator moveEntries(
         LeafNode& src, Iterator srcBegin, Iterator srcEnd,
@@ -211,49 +210,52 @@ public:
     // InternalNode(InternalNode& internalChild)
     //     : Node(NodeType::INTERNAL), mLastChild(&internalChild), mBytes(0) {}
 
-    Iterator find(Bytes key);
+    Iterator find(Bytes key) { throw std::logic_error("unimplemeted"); }
     
     Iterator lowerBound(Bytes key) { assert(0); }
     
     Iterator begin() { return { mChildren.begin(), BufferKeyToBytesKeyPair() };}
     Iterator end()   { return { mChildren.end(), BufferKeyToBytesKeyPair() }; }
     
-    InsertResult insert(Iterator position, Bytes key, LeafNode& value) {
-        return insertGeneric(position, key, value);
-    }
+    const Split<InternalNode>& split() {
+        return *ptrCast<Split<InternalNode>>(&mSplit);
+    }    
     
-    InsertResult insert(Iterator position, Bytes key, InternalNode& value) {
-        return insertGeneric(position, key, value);
-    }
+    // InsertResult insert(Iterator position, Bytes key, LeafNode& value) {
+    //     return insertGeneric(position, key, value);
+    // }
     
-    InsertResult insert(Bytes key, InternalNode& value) {
-        return insertGeneric(key, value);
-    }
+    // InsertResult insert(Iterator position, Bytes key, InternalNode& value) {
+    //     return insertGeneric(position, key, value);
+    // }
     
-    InsertResult insert(Bytes key, LeafNode& value) {
-        return insertGeneric(key, value);
-    }
+    // InsertResult insert(Bytes key, InternalNode& value) {
+    //     return insertGeneric(key, value);
+    // }
     
-    void splitAndInsert(Bytes key, InternalNode& value, InternalNode& sibling) {
-        return splitAndInsertGeneric(key, value, sibling);
-    }
+    // InsertResult insert(Bytes key, LeafNode& value) {
+    //     return insertGeneric(key, value);
+    // }
     
-    void splitAndInsert(Bytes key, LeafNode& value, InternalNode& sibling) {
-        return splitAndInsertGeneric(key, value, sibling);
-    }
+    // void splitAndInsert(Bytes key, InternalNode& value, InternalNode& sibling) {
+    //     return splitAndInsertGeneric(key, value, sibling);
+    // }
+    
+    // void splitAndInsert(Bytes key, LeafNode& value, InternalNode& sibling) {
+    //     return splitAndInsertGeneric(key, value, sibling);
+    // }
     
     std::size_t size() const { return mChildren.size(); }
     
     bool empty() const { return mChildren.empty(); }
     
+    InsertResult insert(Iterator position, Bytes key, Node& value);
+    
+    InsertResult insert(Bytes key, Node& value);
+    
+    void splitAndInsert(Bytes key, Node& value, InternalNode& sibling);
 private:
-    InsertResult insertGeneric(Iterator position, Bytes key, Node& value);
     
-    InsertResult insertGeneric(Bytes key, Node& value);
-    
-    void splitAndInsertGeneric(Bytes key, Node& value, InternalNode& sibling);
-    
-    std::uint_fast16_t mBytes;
     ChildMap mChildren;
     
     friend class ::tupl::pvt::slow::Node::Ops;

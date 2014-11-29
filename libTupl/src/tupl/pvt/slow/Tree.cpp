@@ -1,3 +1,4 @@
+#include "Tree.hpp"
 #include "Node.hpp"
 
 #include "../make_unique.hpp"
@@ -5,27 +6,12 @@
 
 namespace tupl { namespace pvt { namespace slow {
 
-class Tree {
-public:
-    Tree();
-    void insert(Bytes key, Bytes value);
-    std::pair<Bytes, bool> find(Bytes key);
-    
-private:
-    struct InsertContext {
-        Tree& tree;
-        const Bytes& key;
-        const Bytes& value;
-    };
-    
-    static void insertRecursive(Node& cur, InsertContext& ctx);
+class TreeTestBridge;
 
-    InternalNode* allocateInternal();
-    LeafNode* allocateLeaf();
-    
-    InternalNode* mRoot;
-    std::vector<std::unique_ptr<LeafNode>>     mLeafNodes;
-    std::vector<std::unique_ptr<InternalNode>> mInternalNodes;
+struct Tree::InsertContext {
+    Tree& tree;
+    const Bytes& key;
+    const Bytes& value;
 };
 
 Tree::Tree() {
@@ -47,7 +33,6 @@ LeafNode* Tree::allocateLeaf() {
 
 InternalNode* Tree::allocateInternal() {
     auto newInternal = std::unique_ptr<InternalNode>();
-        // make_unique<InternalNode>();
 
     const auto newInternalRaw = newInternal.get();
     
@@ -73,26 +58,28 @@ void Tree::insertRecursive(Node& node, InsertContext& ctx) {
     } else {
         assert(node.type() == NodeType::INTERNAL);
         
-        // auto& cur = *ptrCast<InternalNode>(&node);
-        // auto nextIt = cur.find(ctx.key);
-        // auto next = nextIt->second;
+        auto& cur = *ptrCast<InternalNode>(&node);
+        auto nextIt = cur.find(ctx.key);
+        auto& next = *nextIt->second;
         
-        // insertRecursive(*next, ctx);
+        insertRecursive(next, ctx);
         
-        // auto split = next.split();
-        
-        // if (split.siblingDirection() == SiblingDirection::RIGHT) {
-        //     ++nextIt;
-        // }
-        
-        // const auto insertResult = cur.insert(nextIt, key, sibling);
-        
-        // if (insertResult != InsertResult::INSERTED) {
-        //     assert(insertResult == InsertResult::FAILED_NO_SPACE);
-        //     cur.splitAndInsert(ctx.key, key, sibling);
-        // }
+        if (next.hasSibling()) {    
+            const auto& split = ptrCast<InternalNode>(&next)->split();
+            
+            if (split.direction == SiblingDirection::RIGHT) { ++nextIt; }
+            
+            const auto insertResult =
+                cur.insert(nextIt, split.key, *split.sibling);
+            
+            if (insertResult == InsertResult::FAILED_NO_SPACE) {
+                cur.splitAndInsert(split.key, *split.sibling,
+                                   *ctx.tree.allocateInternal());
+            } else {
+                assert(insertResult == InsertResult::INSERTED);
+            }
+        }
     }
 }
-
 
 } } } // namespace tupl::pvt::slow
