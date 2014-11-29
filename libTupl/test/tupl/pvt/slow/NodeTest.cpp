@@ -83,35 +83,66 @@ BOOST_AUTO_TEST_CASE(LeafNodeBasicTest) {
 }
 
 BOOST_AUTO_TEST_CASE(LeafNodeSplitTest) {
-    LeafNode node;
-    
-    for (size_t i = 100; node.bytes() < node.capacity(); ++i) {
-        ostringstream keyStr;
-        keyStr << "bKey-"  << i;
+    struct  {
+        bool operator()(const string& key, const string& value,
+                        LeafNode& node) const
+        {
+            auto insertResult = node.insert(key, value);
         
-        ostringstream valueStr;
-        valueStr << "value-"  << i;
-        
-        auto insertResult = node.insert(keyStr.str(), valueStr.str());
-        
-        if (insertResult != InsertResult::INSERTED) {
-            BOOST_CHECK(insertResult == InsertResult::FAILED_NO_SPACE);
-            BOOST_CHECK(isOrdered(node));
+            if (insertResult != InsertResult::INSERTED) {
+                BOOST_CHECK(insertResult == InsertResult::FAILED_NO_SPACE);
+                BOOST_CHECK(isOrdered(node));
 
-            const size_t origSize = node.size();
+                const size_t origSize = node.size();
             
-            LeafNode sibling;
-            node.splitAndInsert(keyStr.str(), valueStr.str(), sibling);
+                LeafNode sibling;
+                node.splitAndInsert(key, value, sibling);
             
-            BOOST_CHECK(isOrdered(node));
-            BOOST_CHECK(isOrdered(sibling));
+                BOOST_CHECK(isOrdered(node));
+                BOOST_CHECK(isOrdered(sibling));
             
-            BOOST_CHECK_EQUAL(origSize + 1, node.size() + sibling.size());
+                BOOST_CHECK_EQUAL(origSize + 1, node.size() + sibling.size());
             
-            BOOST_CHECK_LE(origSize / 2, node.size());
-            BOOST_CHECK_LE(origSize / 2, sibling.size());
+                BOOST_CHECK_LE(origSize / 2, node.size());
+                BOOST_CHECK_LE(origSize / 2, sibling.size());
             
-            break;
+                return false;
+            }
+
+            return true;
+        }
+    } insertWithoutSplit;
+
+    {
+        LeafNode node;
+        
+        // Test ascending insert
+        for (size_t i = 100; node.bytes() < node.capacity(); ++i) {
+            ostringstream keyStr;
+            keyStr << "bKey-"  << i;
+        
+            ostringstream valueStr;
+            valueStr << "value-"  << i;
+
+            if (!insertWithoutSplit(keyStr.str(), valueStr.str(), node)) {
+                break;
+            }
+        }
+    }
+    
+    {
+        LeafNode node;
+        // Test descending insert
+        for (size_t i = 999; node.bytes() < node.capacity(); --i) {
+            ostringstream keyStr;
+            keyStr << "bKey-"  << i;
+        
+            ostringstream valueStr;
+            valueStr << "value-"  << i;
+
+            if (!insertWithoutSplit(keyStr.str(), valueStr.str(), node)) {
+                break;
+            }
         }
     }
 }
