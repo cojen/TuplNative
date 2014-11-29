@@ -18,7 +18,7 @@
 #ifndef _TUPL_DATABASECONFIG_HPP
 #define _TUPL_DATABASECONFIG_HPP
 
-#include <cstdint>
+#include <cstddef>
 
 namespace tupl {
 

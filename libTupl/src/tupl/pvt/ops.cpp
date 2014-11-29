@@ -36,7 +36,7 @@ struct FindValueResult {
 };
 
 FindValueResult findValue(Tree& t, LeafNode& node, Bytes key) {
-    
+    throw std::logic_error("unimplemented");
 }
 
 bool isLeaf(const Node* const node) {

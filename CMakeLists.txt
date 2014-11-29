@@ -27,11 +27,16 @@ endif()
 #       This works for now
 set(BUILD_SHARED_LIBS true)
 
+if(WIN32)
+    add_definitions(-DBOOST_ALL_DYN_LINK=1)
+endif(WIN32)
+
 enable_testing()
 
 FIND_PACKAGE(Boost COMPONENTS system thread unit_test_framework REQUIRED)
 IF (Boost_FOUND)
-    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+    include_directories(${Boost_INCLUDE_DIR})
+    link_directories(${Boost_LIBRARY_DIR})
 ENDIF()
 
 add_subdirectory (libTupl)

@@ -17,6 +17,7 @@
 #ifndef _TUPL_PVT_LATCH_HPP
 #define _TUPL_PVT_LATCH_HPP
 
+#include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
 namespace tupl { namespace pvt {

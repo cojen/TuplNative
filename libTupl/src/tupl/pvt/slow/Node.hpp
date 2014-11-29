@@ -36,6 +36,7 @@
 #include "../Buffer.hpp"
 
 #include <cassert>
+#include <vector>
 
 #include <boost/operators.hpp>
 #include <boost/intrusive/list.hpp>
