@@ -83,36 +83,34 @@ BOOST_AUTO_TEST_CASE(LeafNodeBasicTest) {
 }
 
 BOOST_AUTO_TEST_CASE(LeafNodeSplitTest) {
-    struct  {
-        bool operator()(const string& key, const string& value,
-                        LeafNode& node) const
-        {
-            auto insertResult = node.insert(key, value);
+    auto insertWithoutSplit = [](const string& key, const string& value,
+                                 LeafNode& node)
+    {
+        auto insertResult = node.insert(key, value);
         
-            if (insertResult != InsertResult::INSERTED) {
-                BOOST_CHECK(insertResult == InsertResult::FAILED_NO_SPACE);
-                BOOST_CHECK(isOrdered(node));
+        if (insertResult != InsertResult::INSERTED) {
+            BOOST_CHECK(insertResult == InsertResult::FAILED_NO_SPACE);
+            BOOST_CHECK(isOrdered(node));
 
-                const size_t origSize = node.size();
+            const size_t origSize = node.size();
             
-                LeafNode sibling;
-                node.splitAndInsert(key, value, sibling);
+            LeafNode sibling;
+            node.splitAndInsert(key, value, sibling);
             
-                BOOST_CHECK(isOrdered(node));
-                BOOST_CHECK(isOrdered(sibling));
+            BOOST_CHECK(isOrdered(node));
+            BOOST_CHECK(isOrdered(sibling));
             
-                BOOST_CHECK_EQUAL(origSize + 1, node.size() + sibling.size());
+            BOOST_CHECK_EQUAL(origSize + 1, node.size() + sibling.size());
             
-                BOOST_CHECK_LE(origSize / 2, node.size());
-                BOOST_CHECK_LE(origSize / 2, sibling.size());
+            BOOST_CHECK_LE(origSize / 2, node.size());
+            BOOST_CHECK_LE(origSize / 2, sibling.size());
             
-                return false;
-            }
-
-            return true;
+            return false;
         }
-    } insertWithoutSplit;
-
+        
+        return true;
+    };
+    
     {
         LeafNode node;
         
