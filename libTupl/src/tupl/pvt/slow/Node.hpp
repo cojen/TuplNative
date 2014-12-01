@@ -212,7 +212,7 @@ public:
 
     Iterator find(Bytes key) { throw std::logic_error("unimplemeted"); }
     
-    Iterator lowerBound(Bytes key) { assert(0); }
+    Iterator lowerBound(Bytes key) { throw std::logic_error("unimplemented");}
     
     Iterator begin() { return { mChildren.begin(), BufferKeyToBytesKeyPair() };}
     Iterator end()   { return { mChildren.end(), BufferKeyToBytesKeyPair() }; }

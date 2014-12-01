@@ -23,7 +23,7 @@ Tree::Tree() {
 }
 
 LeafNode* Tree::allocateLeaf() {
-    auto newLeaf = make_unique<LeafNode>();
+    auto newLeaf = std::make_unique<LeafNode>();
     const auto newLeafRaw = newLeaf.get();
     
     mLeafNodes.emplace_back(std::move(newLeaf));

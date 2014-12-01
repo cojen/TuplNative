@@ -1,9 +1,10 @@
 #ifndef _TUPL_MAKE_UNIQUE_HPP
 #define _TUPL_MAKE_UNIQUE_HPP
 
+#include <memory>
+
 #if __cplusplus == 201103L
 
-#include <memory>
 #include <utility>
 
 namespace tupl {

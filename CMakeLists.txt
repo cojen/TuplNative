@@ -28,6 +28,7 @@ endif()
 set(BUILD_SHARED_LIBS true)
 
 if(WIN32)
+    set(BUILD_SHARED_LIBS false)
     add_definitions(-DBOOST_ALL_DYN_LINK=1)
 endif(WIN32)
 
