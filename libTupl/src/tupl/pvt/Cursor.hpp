@@ -18,7 +18,7 @@
 #ifndef _TUPL_PVT_CURSOR_HPP
 #define _TUPL_PVT_CURSOR_HPP
 
-#include "ArrayStackGeneric.hpp"
+#include "ArrayDeque.hpp"
 #include "CursorFrame.hpp"
 #include "Buffer.hpp"
 
@@ -57,7 +57,7 @@ public:
 private:    
     // Lower case because these two are part of the interface exposed to ops;
     Buffer key;    
-    ArrayStackGeneric<CursorFrame, 64> stackFrames;
+    ArrayDeque<CursorFrame, 64> stackFrames;
     
     friend class ops;
 };

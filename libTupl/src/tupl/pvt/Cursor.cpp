@@ -16,7 +16,6 @@
 */
 
 #include "Cursor.hpp"
-#include "ArrayStackGeneric.ii"
 
 
 namespace tupl { namespace pvt {

@@ -1,0 +1,139 @@
+/*
+Copyright (C) 2014      Pooja Nagpal
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+#ifndef _TUPL_PVT_ARRAYDEQUE_II
+#define _TUPL_PVT_ARRAYDEQUE_II
+
+#include "ptrCast.hpp"
+#include "ArrayDeque.hpp"
+
+namespace tupl { namespace pvt {
+
+template<typename T, std::size_t N>
+ArrayDeque<T, N>::ArrayDeque() :
+	mSize(0),
+	mFrontIdx(-1), 
+	mBackIdx(-1)	
+{
+}
+
+
+template<typename T, std::size_t N>
+void ArrayDeque<T, N>::emplaceBack(T&& val) {
+	assert(!full());
+
+	mBackIdx = (mBackIdx + 1) % N;
+
+	T* insAt = ptrCast<T>(mElems + mBackIdx);
+
+	new (insAt) T(std::move(val));
+	
+	mFrontIdx = empty() ? mBackIdx : mFrontIdx;
+
+	mSize++;			
+}
+
+template<typename T, std::size_t N>
+void ArrayDeque<T, N>::emplaceFront(T&& val) {
+	assert(!full());
+
+	mFrontIdx = (mFrontIdx + N - 1) % N;
+
+	T* insAt = ptrCast<T>(mElems + mFrontIdx);
+
+	new (insAt) T(std::move(val));
+
+	mBackIdx = empty() ? mFrontIdx : mBackIdx;
+
+	mSize++;
+}
+
+template<typename T, std::size_t N>
+T& ArrayDeque<T, N>::back() {
+	assert(!empty());
+
+	T* back = ptrCast<T>(mElems + mBackIdx);
+	return *back;
+}
+
+template<typename T, std::size_t N>
+T& ArrayDeque<T, N>::front() {
+	assert(!empty());
+
+	T* front = ptrCast<T>(mElems + mFrontIdx);
+	return *front;
+}
+
+template<typename T, std::size_t N>
+const T& ArrayDeque<T, N>::back() const {
+	return const_cast<ArrayDeque*>(this)->back();
+}
+
+template<typename T, std::size_t N>
+const T& ArrayDeque<T, N>::front() const {
+	return const_cast<ArrayDeque*>(this)->front();
+}
+
+template<typename T, std::size_t N>
+bool ArrayDeque<T, N>::empty() const {
+	return mSize == 0;
+}
+
+template<typename T, std::size_t N>
+bool ArrayDeque<T, N>::full() const {
+	return (mSize == N);
+}
+
+template<typename T, std::size_t N>
+size_t ArrayDeque<T, N>::size() const {
+	return mSize;
+}
+
+template<typename T, std::size_t N>
+void ArrayDeque<T, N>::popBack() {
+	assert(!empty());
+
+	back().~T();
+
+	mBackIdx = (mBackIdx + N - 1) % N;
+	mSize--;
+}
+
+template<typename T, std::size_t N>
+void ArrayDeque<T, N>::popFront() {
+	assert(!empty());
+
+	front().~T();
+
+	mFrontIdx = (mFrontIdx + 1) % N;
+	mSize--;			
+}
+
+template<typename T, std::size_t N>
+void ArrayDeque<T, N>::clear() {
+	while (!empty()) {
+		popBack();
+	}
+}
+
+template<typename T, std::size_t N>
+ArrayDeque<T, N>::~ArrayDeque() {
+	clear();
+}
+
+} } // namespace tupl::pvt
+
+#endif

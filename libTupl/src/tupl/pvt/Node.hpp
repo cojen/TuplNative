@@ -20,7 +20,7 @@
 #include "../types.hpp"
 #include "types.hpp"
 
-#include "ArrayStackGeneric.hpp"
+#include "ArrayDeque.hpp"
 #include "CursorFrame.hpp"
 #include "Latch.hpp"
 

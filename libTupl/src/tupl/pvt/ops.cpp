@@ -13,7 +13,7 @@
 using namespace tupl::pvt::slow;
 using std::size_t;
 
-#include "ArrayStackGeneric.ii"
+#include "ArrayDeque.hpp"
 
 namespace tupl { namespace pvt {
 
@@ -61,7 +61,7 @@ Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
     const size_t numFrames = stackFrames.size();
     
     for (size_t i = 1; i < numFrames; ++i) {
-        auto& frame = stackFrames.top();
+        auto& frame = stackFrames.back();
         // FIXME: abstract this better
         const auto node = frame.node();
         auto toEraseIt = node->visitorFrames.s_iterator_to(frame); // s => static
@@ -69,16 +69,16 @@ Latch::scoped_exclusive_lock ops::unwindAndLockRoot(Tree& tree, Cursor& visitor)
             Latch::scoped_exclusive_lock nodeLock(*node);
             node->visitorFrames.erase(toEraseIt);
         }
-        stackFrames.pop();
+        stackFrames.popBack();
     }
     
-    auto& frame = stackFrames.top();
+    auto& frame = stackFrames.back();
     const auto stackRoot = frame.node();
     auto toEraseIt = stackRoot->visitorFrames.s_iterator_to(frame);
     
     Latch::scoped_exclusive_lock rootLock(*stackRoot);
     stackRoot->visitorFrames.erase(toEraseIt);
-    stackFrames.pop();
+    stackFrames.popBack();
     
     //FIXME: Deal with changing height by making this a "circular" stack
     const auto root = tree.root.load(std::memory_order_acquire);
@@ -151,7 +151,7 @@ void ops::store(Tree& t, Cursor& visitor, Bytes value) {
     }
     
     LeafNode* const leafNode = static_cast<LeafNode*>(
-        visitor.stackFrames.top().node());
+        visitor.stackFrames.back().node());
     
     Latch::scoped_exclusive_lock exclusiveLeafLock(*leafNode);
 
